@@ -24,7 +24,7 @@ namespace Buffers {
    protected:
   /*!
    * Constructor in which should be put prepared buffer.
-   * DO NOT DELETE MEMORY BY YOUSELF !!
+   * DO NOT DELETE MEMORY BY YOUSELF INSIDE OF THIS CLASS !!
    * @param pMsg Pointer to the buffer
    * @param size Size of the buffer
    */

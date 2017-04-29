@@ -11,10 +11,10 @@
 namespace Buffers {
   /*!
    * Cyclic buffer for writing and reading data
-   * @tparam _Type Data type for storing in cyclic buffer
    * @tparam _Size Size of cyclic buffer
+   * @tparam _Type Data type for storing in cyclic buffer
    */
-  template <typename _Type, int _Size>
+  template <int _Size, typename _Type = uint8_t>
   class CyclicBuffer {
   #if __cplusplus > 199711L
     static_assert(_Size > 0, "_Size should be more than 0");
