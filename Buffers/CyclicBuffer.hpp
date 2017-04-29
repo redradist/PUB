@@ -2,8 +2,8 @@
 // Created by redra on 16.04.2017.
 //
 
-#ifndef BUFFERS_CICLICBUFFER_HPP
-#define BUFFERS_CICLICBUFFER_HPP
+#ifndef BUFFERS_CYCLICBUFFER_HPP
+#define BUFFERS_CYCLICBUFFER_HPP
 
 #include <cassert>
 #include <algorithm>
@@ -72,4 +72,4 @@ namespace Buffers {
   };
 }
 
-#endif //BUFFERS_CICLICBUFFER_HPP
+#endif //BUFFERS_CYCLICBUFFER_HPP

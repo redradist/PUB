@@ -4,12 +4,12 @@ project(Buffers)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
 
 set(SOURCE_FILES    main.cpp
-                    Buffers/CiclicBuffer.hpp
+                    Buffers/CyclicBuffer.hpp
                     Buffers/PackBuffer.hpp
                     Buffers/UnpackBuffer.hpp
                     Buffers/StackPackBuffer.hpp
                     Buffers/HeapPackBuffer.hpp
-                    tests/CiclicBufferTests.cpp
+                    tests/CyclicBufferTests.cpp
                     tests/HeapPackBufferTests.cpp
                     tests/StackPackBufferTests.cpp
                     tests/UnpackBufferTests.cpp)
