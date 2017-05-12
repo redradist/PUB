@@ -10,8 +10,8 @@
 
 namespace Buffers {
 /*!
- * Pack buffer class based on stack buffer
- * @tparam _Size Size of stack buffer
+ * Pack buffer class based on heap buffer
+ * @tparam _Size Size of heap buffer
  */
 class HeapPackBuffer
     : public PackBuffer {
