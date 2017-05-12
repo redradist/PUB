@@ -74,7 +74,7 @@ namespace Buffers {
     template<typename T>
     bool put(T *t, size_t data_len) {
       bool result = false;
-      if ((pos_ + sizeof(data_len) + sizeof(T) * data_len) <= kSize_) {
+      if (t && (pos_ + sizeof(data_len) + sizeof(T) * data_len) <= kSize_) {
         if (put<size_t>(data_len)) {
           const uint8_t *p_start_ = reinterpret_cast<const uint8_t *>(t);
           std::copy(p_start_, p_start_ + sizeof(T) * data_len, p_msg_ + pos_);
@@ -99,7 +99,7 @@ namespace Buffers {
         pos_ += kCStringLen;
         result = true;
       }
-      return true;
+      return result;
     }
 
     /*!
@@ -118,14 +118,16 @@ namespace Buffers {
      */
     bool put(const char *str) {
       bool result = false;
-      int kCStringLen = std::strlen(str) + 1;
-      if ((pos_ + kCStringLen) <= kSize_) {
-        const uint8_t *p_start_ = reinterpret_cast<const uint8_t *>(str);
-        std::copy(p_start_, p_start_ + kCStringLen, p_msg_ + pos_);
-        pos_ += kCStringLen;
-        result = true;
+      if (str) {
+        int kCStringLen = std::strlen(str) + 1;
+        if ((pos_ + kCStringLen) <= kSize_) {
+          const uint8_t *p_start_ = reinterpret_cast<const uint8_t *>(str);
+          std::copy(p_start_, p_start_ + kCStringLen, p_msg_ + pos_);
+          pos_ += kCStringLen;
+          result = true;
+        }
       }
-      return true;
+      return result;
     }
 
     /*!
