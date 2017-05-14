@@ -5,7 +5,7 @@
 #ifndef BUFFERS_PACKBUFFER_HPP
 #define BUFFERS_PACKBUFFER_HPP
 
-#include <cstdint>
+#include <stdint.h>
 #include <cstring>
 #include <string>
 #include <algorithm>

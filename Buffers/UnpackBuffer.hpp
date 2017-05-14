@@ -5,7 +5,7 @@
 #ifndef BUFFERS_UNPACKBUFFER_HPP
 #define BUFFERS_UNPACKBUFFER_HPP
 
-#include <cstdint>
+#include <stdint.h>
 #include <cstring>
 
 namespace Buffers {

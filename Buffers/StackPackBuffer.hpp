@@ -5,7 +5,7 @@
 #ifndef BUFFERS_STACKPACKBUFFER_HPP
 #define BUFFERS_STACKPACKBUFFER_HPP
 
-#include <cstdint>
+#include <stdint.h>
 #include "PackBuffer.hpp"
 
 namespace Buffers {

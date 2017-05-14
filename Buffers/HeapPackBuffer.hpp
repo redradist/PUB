@@ -5,7 +5,7 @@
 #ifndef BUFFERS_HEAPPACKBUFFER_HPP
 #define BUFFERS_HEAPPACKBUFFER_HPP
 
-#include <cstdint>
+#include <stdint.h>
 #include "PackBuffer.hpp"
 
 namespace Buffers {

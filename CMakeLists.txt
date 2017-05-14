@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.7)
 project(Buffers)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Werror=return-type")
 
 set(SOURCE_FILES    main.cpp
                     Buffers/CyclicBuffer.hpp
