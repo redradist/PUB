@@ -1,6 +1,10 @@
-//
-// Created by redra on 16.04.2017.
-//
+/**
+ * @file CyclicBuffer.hpp
+ * @author Denis Kotov
+ * @date 19 Apr 2017
+ * @brief Contains library for creating Cyclic Buffer
+ * @copyright MIT License. Open source: https://github.com/redradist/Transport_Buffers.git
+ */
 
 #ifndef BUFFERS_CYCLICBUFFER_HPP
 #define BUFFERS_CYCLICBUFFER_HPP

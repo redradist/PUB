@@ -1,6 +1,10 @@
-//
-// Created by redra on 17.04.2017.
-//
+/**
+ * @file PackBuffer.hpp
+ * @author Denis Kotov
+ * @date 17 Apr 2017
+ * @brief Contains abstract class for Pack Buffer
+ * @copyright MIT License. Open source: https://github.com/redradist/Transport_Buffers.git
+ */
 
 #ifndef BUFFERS_PACKBUFFER_HPP
 #define BUFFERS_PACKBUFFER_HPP

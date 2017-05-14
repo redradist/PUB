@@ -1,6 +1,10 @@
-//
-// Created by redra on 19.04.2017.
-//
+/**
+ * @file HeapPackBuffer.hpp
+ * @author Denis Kotov
+ * @date 19 Apr 2017
+ * @brief Contains library for creating Heap based Pack Buffer
+ * @copyright MIT License. Open source: https://github.com/redradist/Transport_Buffers.git
+ */
 
 #ifndef BUFFERS_HEAPPACKBUFFER_HPP
 #define BUFFERS_HEAPPACKBUFFER_HPP
