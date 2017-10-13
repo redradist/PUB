@@ -13,7 +13,7 @@
 #include <algorithm>
 
 namespace Buffers {
-  /*!
+  /**
    * Cyclic buffer for writing and reading data
    * @tparam _Size Size of cyclic buffer
    * @tparam _Type Data type for storing in cyclic buffer
@@ -32,7 +32,7 @@ namespace Buffers {
   #endif
     }
 
-    /*!
+    /**
      * Method used to push type in buffer
      * @param message Message that need to be put in buffer
      */
@@ -52,7 +52,7 @@ namespace Buffers {
       }
     }
 
-    /*!
+    /**
      * Method is used to retrieve message from the buffer
      * @return Pointer to the message
      */

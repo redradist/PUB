@@ -11,14 +11,31 @@
 
 #include <stdint.h>
 #include <cstring>
+#include <vector>
+#include <list>
 
 namespace Buffers {
-  /*!
+  /**
    * Unpack buffer class
    */
   class UnpackBuffer {
+   private:
+    /**
+     *
+     * @tparam T
+     */
+    template <typename T>
+    class DelegateUnpackBuffer {
+     public:
+      T get(uint8_t const *& p_pos_) {
+        const T &t = *(reinterpret_cast<const T *>(p_pos_));
+        p_pos_ += sizeof(T);
+        return std::move(t);
+      }
+    };
+
    public:
-    /*!
+    /**
      * Constructor for unpacking buffer
      * @param pMsg Pointer to the raw buffer
      */
@@ -27,19 +44,18 @@ namespace Buffers {
           p_msg_(reinterpret_cast<uint8_t const *>(pMsg)) {
     }
 
-    /*!
+    /**
      * Template getting type T from the buffer
      * @tparam T Type for getting from buffer
      * @return Reference to type T
      */
     template<typename T>
-    const T &get() {
-      const T &t = *(reinterpret_cast<const T *>(p_pos_));
-      p_pos_ += sizeof(T);
-      return t;
+    T get() {
+      auto unpacker = DelegateUnpackBuffer<T>();
+      return unpacker.get(p_pos_);
     }
 
-    /*!
+    /**
      * Specialization for null-terminated string
      * @return Null-terminated string
      */
@@ -49,7 +65,7 @@ namespace Buffers {
       return t;
     }
 
-    /*!
+    /**
      * Method for reset unpacking data from the buffer
      */
     void reset() {
@@ -59,6 +75,32 @@ namespace Buffers {
    private:
     uint8_t const *p_pos_;
     uint8_t const *p_msg_;
+  };
+
+  template<typename T>
+  class UnpackBuffer::DelegateUnpackBuffer<std::vector<T>> {
+   public:
+    std::vector<T> get(uint8_t const *& p_pos_) {
+      std::vector<T> result;
+      auto size = DelegateUnpackBuffer< typename std::vector<T>::size_type >().get(p_pos_);
+      for (int i = 0; i < size; ++i) {
+        result.push_back(DelegateUnpackBuffer<T>().get(p_pos_));
+      }
+      return std::move(result);
+    }
+  };
+
+  template<typename T>
+  class UnpackBuffer::DelegateUnpackBuffer<std::list<T>> {
+   public:
+    std::list<T> get(uint8_t const *& p_pos_) {
+      std::list<T> result;
+      auto size = DelegateUnpackBuffer< typename std::vector<T>::size_type >().get(p_pos_);
+      for (int i = 0; i < size; ++i) {
+        result.push_back(DelegateUnpackBuffer<T>().get(p_pos_));
+      }
+      return std::move(result);
+    }
   };
 }
 
