@@ -13,7 +13,7 @@
 #include "PackBuffer.hpp"
 
 namespace Buffers {
-/*!
+/**
  * Pack buffer class based on heap buffer
  * @tparam _Size Size of heap buffer
  */
