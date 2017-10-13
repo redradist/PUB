@@ -21,8 +21,8 @@ namespace Buffers {
   class UnpackBuffer {
    private:
     /**
-     *
-     * @tparam T
+     * Class which UnpackBuffer delegate real unpacking of data
+     * @tparam T Data to unpack
      */
     template <typename T>
     class DelegateUnpackBuffer {
