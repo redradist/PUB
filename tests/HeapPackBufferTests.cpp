@@ -197,10 +197,8 @@ TEST_F(HeapPackBufferVectorTest, ValidVectorgTest0)
   ASSERT_EQ(buffer->put(vec0), true);
   ASSERT_EQ(buffer->put(vec1), true);
   UnpackBuffer unbuffer(buffer->getData());
-  auto res_vec0 = std::vector<int>{1, 2, 3};
-  ASSERT_EQ(unbuffer.get<std::vector<int>>(), res_vec0);
-  auto res_vec1 = std::vector<float>{3, 2, 1};
-  ASSERT_EQ(unbuffer.get<std::vector<float>>(), res_vec1);
+  ASSERT_EQ(unbuffer.get<std::vector<int>>(), vec0);
+  ASSERT_EQ(unbuffer.get<std::vector<float>>(), vec1);
 }
 
 TEST_F(HeapPackBufferVectorTest, ValidVectorgTest1)
@@ -210,34 +208,30 @@ TEST_F(HeapPackBufferVectorTest, ValidVectorgTest1)
   ASSERT_EQ(buffer->put(vec0), true);
   ASSERT_EQ(buffer->put(vec1), true);
   UnpackBuffer unbuffer(buffer->getData());
-  auto res_vec0 = std::vector<double>{1, 2, 3};
-  ASSERT_EQ(unbuffer.get<std::vector<double>>(), res_vec0);
-  auto res_vec1 = std::vector<float>{3, 2, 1};
-  ASSERT_EQ(unbuffer.get<std::vector<float>>(), res_vec1);
+  ASSERT_EQ(unbuffer.get<std::vector<double>>(), vec0);
+  ASSERT_EQ(unbuffer.get<std::vector<float>>(), vec1);
 }
 
 TEST_F(HeapPackBufferVectorTest, ValidListTest0)
 {
-  std::list<int> vec0 = {1, 2, 3};
-  std::list<float> vec1 = {3, 2, 1};
-  ASSERT_EQ(buffer->put(vec0), true);
-  ASSERT_EQ(buffer->put(vec1), true);
+  std::list<int> lst0 = {1, 2, 3};
+  std::list<float> lst1 = {3, 2, 1};
+  ASSERT_EQ(buffer->put(lst0), true);
+  ASSERT_EQ(buffer->put(lst1), true);
   UnpackBuffer unbuffer(buffer->getData());
-  auto res_vec0 = std::list<int>{1, 2, 3};
-  ASSERT_EQ(unbuffer.get<std::list<int>>(), res_vec0);
-  auto res_vec1 = std::list<float>{3, 2, 1};
-  ASSERT_EQ(unbuffer.get<std::list<float>>(), res_vec1);
+  ASSERT_EQ(unbuffer.get<std::list<int>>(), lst0);
+  ASSERT_EQ(unbuffer.get<std::list<float>>(), lst1);
 }
 
 TEST_F(HeapPackBufferVectorTest, ValidListTest1)
 {
-  std::list<double> vec0 = {1, 2, 3};
-  std::list<float> vec1 = {3, 2, 1};
-  ASSERT_EQ(buffer->put(vec0), true);
-  ASSERT_EQ(buffer->put(vec1), true);
+  std::list<double> lst0 = {1, 2, 3};
+  std::list<float> lst1 = {3, 2, 1};
+  ASSERT_EQ(buffer->put(lst0), true);
+  ASSERT_EQ(buffer->put(lst1), true);
   UnpackBuffer unbuffer(buffer->getData());
-  ASSERT_EQ(unbuffer.get<std::list<double>>(), vec0);
-  ASSERT_EQ(unbuffer.get<std::list<float>>(), vec1);
+  ASSERT_EQ(unbuffer.get<std::list<double>>(), lst0);
+  ASSERT_EQ(unbuffer.get<std::list<float>>(), lst1);
 }
 
 TEST_F(HeapPackBufferMixedDataTest, MixedDataTest0)
@@ -264,17 +258,17 @@ TEST_F(HeapPackBufferMixedDataTest, MixedDataTest1)
 
 TEST_F(HeapPackBufferMixedDataTest, MixedDataTest2)
 {
-  std::list<double> vec0 = {1, 2, 3};
-  std::vector<int> vec1 = {1, 2, 3};
+  std::list<double> lst = {1, 2, 3};
+  std::vector<int> vec = {1, 2, 3};
   ASSERT_EQ(buffer->put("Hello"), true);
-  ASSERT_EQ(buffer->put(vec0), true);
+  ASSERT_EQ(buffer->put(lst), true);
   ASSERT_EQ(buffer->put<uint8_t>(8), true);
-  ASSERT_EQ(buffer->put(vec1), true);
+  ASSERT_EQ(buffer->put(vec), true);
   ASSERT_EQ(buffer->put<float>(8.), true);
   UnpackBuffer unbuffer(buffer->getData());
   ASSERT_EQ(unbuffer.get(), std::string{"Hello"});
-  ASSERT_EQ(unbuffer.get<std::list<double>>(), vec0);
+  ASSERT_EQ(unbuffer.get<std::list<double>>(), lst);
   ASSERT_EQ(unbuffer.get<uint8_t>(), 8);
-  ASSERT_EQ(unbuffer.get<std::vector<int>>(), vec1);
+  ASSERT_EQ(unbuffer.get<std::vector<int>>(), vec);
   ASSERT_EQ(unbuffer.get<float>(), 8.);
 }
