@@ -56,7 +56,7 @@ namespace Buffers {
     }
 
     const char *get() {
-      return get<const char*>();
+      return this->get<const char*>();
     }
 
     /**

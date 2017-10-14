@@ -83,7 +83,7 @@ namespace Buffers {
        * Method for packing in buffer array of data
        * @tparam T Type of packing data
        * @param t Pointer on first element of packing data
-       * @param data_len Length of data to be stored
+       * @param dataLen Length of data to be stored
        * @return Return true if packing is succeed, false otherwise
        */
       bool put(T * t, size_t dataLen) {
@@ -389,8 +389,8 @@ namespace Buffers {
   };
 
   /**
-   * Specialization DelegatePackBuffer class for std::list
-   * @tparam T Type of data under std::list
+   * Specialization DelegatePackBuffer class for std::set
+   * @tparam K Type of data under std::set
    */
   template <typename K>
   class PackBuffer::DelegatePackBuffer<std::set<K>> {
@@ -405,9 +405,9 @@ namespace Buffers {
     }
 
     /**
-     * Method for packing std::list in buffer
-     * @tparam T Type of std::list
-     * @param lst std::list for packing
+     * Method for packing std::set in buffer
+     * @tparam K Type of std::set
+     * @param mp std::set for packing
      * @return Return true if packing is succeed, false otherwise
      */
     bool put(const std::set<K> & mp) {
@@ -425,9 +425,9 @@ namespace Buffers {
     }
 
     /**
-     * Method for packing rvalue std::list in buffer
-     * @tparam T Type of std::list
-     * @param lst rvalue std::list for packing
+     * Method for packing rvalue std::set in buffer
+     * @tparam K Type of std::set
+     * @param mp rvalue std::set for packing
      * @return Return true if packing is succeed, false otherwise
      */
     bool put(std::set<K> && mp) {
@@ -446,8 +446,9 @@ namespace Buffers {
   };
 
   /**
-   * Specialization DelegatePackBuffer class for std::list
-   * @tparam T Type of data under std::list
+   * Specialization DelegatePackBuffer class for std::map
+   * @tparam K Key of std::map
+   * @tparam V Value of std::map
    */
   template <typename K, typename V>
   class PackBuffer::DelegatePackBuffer<std::map<K, V>> {
@@ -462,9 +463,10 @@ namespace Buffers {
     }
 
     /**
-     * Method for packing std::list in buffer
-     * @tparam T Type of std::list
-     * @param lst std::list for packing
+     * Method for packing std::map in buffer
+     * @tparam K Key of std::map
+     * @tparam V Value of std::map
+     * @param mp std::map for packing
      * @return Return true if packing is succeed, false otherwise
      */
     bool put(const std::map<K, V> & mp) {
@@ -483,9 +485,10 @@ namespace Buffers {
     }
 
     /**
-     * Method for packing rvalue std::list in buffer
-     * @tparam T Type of std::list
-     * @param lst rvalue std::list for packing
+     * Method for packing rvalue std::map in buffer
+     * @tparam K Key of std::map
+     * @tparam V Value of std::map
+     * @param mp std::map for packing
      * @return Return true if packing is succeed, false otherwise
      */
     bool put(std::map<K, V> && mp) {
