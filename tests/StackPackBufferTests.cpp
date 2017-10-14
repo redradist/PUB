@@ -234,6 +234,68 @@ TEST_F(StackPackBufferVectorTest, ValidListTest1)
   ASSERT_EQ(unbuffer.get<std::list<float>>(), lst1);
 }
 
+TEST_F(StackPackBufferVectorTest, ValidSetTest0)
+{
+  std::set<std::string> set0;
+  set0.insert("4");
+  set0.insert("5");
+  set0.insert("8");
+  ASSERT_EQ(buffer->put(set0), true);
+  UnpackBuffer unbuffer(buffer->getData());
+  auto res0 = unbuffer.get<std::set<std::string>>();
+  ASSERT_EQ(res0, set0);
+}
+
+TEST_F(StackPackBufferVectorTest, ValidSetTest1)
+{
+  std::set<std::string> set0;
+  set0.insert("4");
+  set0.insert("5");
+  set0.insert("8");
+  std::set<std::string> set1;
+  set1.insert("8");
+  set1.insert("11");
+  set1.insert("16");
+  ASSERT_EQ(buffer->put(set0), true);
+  ASSERT_EQ(buffer->put(set1), true);
+  UnpackBuffer unbuffer(buffer->getData());
+  auto res0 = unbuffer.get<std::set<std::string>>();
+  ASSERT_EQ(res0, set0);
+  auto res2 = unbuffer.get<std::set<std::string>>();
+  ASSERT_EQ(res2, set1);
+}
+
+TEST_F(StackPackBufferVectorTest, ValidMapTest0)
+{
+  std::map<int, std::string> map0;
+  map0[8] = "4";
+  map0[2] = "5";
+  map0[3] = "8";
+  ASSERT_EQ(buffer->put(map0), true);
+  UnpackBuffer unbuffer(buffer->getData());
+  auto result = unbuffer.get<std::map<int, std::string>>();
+  ASSERT_EQ(result, map0);
+}
+
+TEST_F(StackPackBufferVectorTest, ValidMapTest1)
+{
+  std::map<int, std::string> map0;
+  map0[8] = "4";
+  map0[2] = "5";
+  map0[3] = "8";
+  std::map<std::string, int> map1;
+  map1["1"] = 1;
+  map1["8"] = 6;
+  map1["5"] = 9;
+  ASSERT_EQ(buffer->put(map0), true);
+  ASSERT_EQ(buffer->put(map1), true);
+  UnpackBuffer unbuffer(buffer->getData());
+  auto res0 = unbuffer.get<std::map<int, std::string>>();
+  ASSERT_EQ(res0, map0);
+  auto res1 = unbuffer.get<std::map<std::string, int>>();
+  ASSERT_EQ(res1, map1);
+}
+
 TEST_F(StackPackBufferMixedDataTest, MixedDataTest0)
 {
   ASSERT_EQ(buffer->put<uint8_t>(8), true);
@@ -271,4 +333,34 @@ TEST_F(StackPackBufferMixedDataTest, MixedDataTest2)
   ASSERT_EQ(unbuffer.get<uint8_t>(), 8);
   ASSERT_EQ(unbuffer.get<std::vector<int>>(), vec);
   ASSERT_EQ(unbuffer.get<float>(), 8.);
+}
+
+TEST_F(StackPackBufferMixedDataTest, MixedDataTest3)
+{
+  std::list<double> lst = {1, 2, 3};
+  std::vector<int> vec = {1, 2, 3};
+  std::set<std::string> set;
+  set.insert("4");
+  set.insert("5");
+  set.insert("8");
+  std::map<std::string, int> map;
+  map["1"] = 1;
+  map["8"] = 6;
+  map["5"] = 9;
+  ASSERT_EQ(buffer->put("Hello"), true);
+  ASSERT_EQ(buffer->put(lst), true);
+  ASSERT_EQ(buffer->put<uint8_t>(8), true);
+  ASSERT_EQ(buffer->put(vec), true);
+  ASSERT_EQ(buffer->put(set), true);
+  ASSERT_EQ(buffer->put<float>(8.), true);
+  ASSERT_EQ(buffer->put(map), true);
+  UnpackBuffer unbuffer(buffer->getData());
+  ASSERT_EQ(unbuffer.get(), std::string{"Hello"});
+  ASSERT_EQ(unbuffer.get<std::list<double>>(), lst);
+  ASSERT_EQ(unbuffer.get<uint8_t>(), 8);
+  ASSERT_EQ(unbuffer.get<std::vector<int>>(), vec);
+  ASSERT_EQ(unbuffer.get<std::set<std::string>>(), set);
+  ASSERT_EQ(unbuffer.get<float>(), 8.);
+  auto res0 = unbuffer.get<std::map<std::string, int>>();
+  ASSERT_EQ(res0, map);
 }
