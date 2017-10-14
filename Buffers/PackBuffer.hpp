@@ -21,6 +21,87 @@ namespace Buffers {
    * Pack buffer class
    */
   class PackBuffer {
+   private:
+    /**
+     * Class which PackBuffer delegate real unpacking of data
+     * @tparam T Data to unpack
+     */
+    template <typename T>
+    class DelegatePackBuffer {
+     private:
+      uint8_t *& p_msg_;
+      size_t & size_;
+
+     public:
+      DelegatePackBuffer(uint8_t *& pMsg, size_t & size)
+          : p_msg_(pMsg),
+            size_(size) {
+      }
+
+      /**
+       * Method for packing in buffer constant or temporary data
+       * @tparam T Type of packing data
+       * @param t Data for packing
+       * @return Return true if packing is succeed, false otherwise
+       */
+      bool put(const T & t) {
+        bool result = false;
+        if (sizeof(T) <= size_) {
+          const uint8_t *p_start_ = reinterpret_cast<const uint8_t *>(&t);
+          std::copy(p_start_, p_start_ + sizeof(T), p_msg_);
+          size_t writtenSize = sizeof(T);
+          p_msg_ += writtenSize;
+          size_ -= writtenSize;
+          result = true;
+        }
+        return result;
+      }
+
+      /**
+       * Method for packing in buffer array of data
+       * @tparam dataLen Array lenght
+       * @param t Array to packing data
+       * @return Return true if packing is succeed, false otherwise
+       */
+      template <size_t dataLen>
+      bool put(const T t[dataLen]) {
+        bool result = false;
+        if (t && (sizeof(dataLen) + sizeof(T) * dataLen) <= size_) {
+          if (this->put(dataLen)) {
+            const uint8_t *p_start_ = reinterpret_cast<const uint8_t *>(t);
+            std::copy(p_start_, p_start_ + sizeof(T) * dataLen, p_msg_);
+            size_t writtenSize = sizeof(T) * dataLen;
+            p_msg_ += writtenSize;
+            size_ -= writtenSize;
+            result = true;
+          }
+        }
+        return result;
+      }
+
+      /**
+       * Method for packing in buffer array of data
+       * @tparam T Type of packing data
+       * @param t Pointer on first element of packing data
+       * @param dataLen Length of data to be stored
+       * @return Return true if packing is succeed, false otherwise
+       */
+      bool put(T * t, size_t dataLen) {
+        bool result = false;
+        if (t && (sizeof(dataLen) + sizeof(T) * dataLen) <= size_) {
+          if (this->put(dataLen)) {
+            const uint8_t *p_start_ = reinterpret_cast<const uint8_t *>(t);
+            std::copy(p_start_, p_start_ + sizeof(T) * dataLen, p_msg_);
+            size_t writtenSize = sizeof(T) * dataLen;
+            p_msg_ += writtenSize;
+            size_ -= writtenSize;
+            result = true;
+          }
+        }
+        return result;
+      }
+    };
+
    public:
     /**
      * Destructor for deletion memory if it was allocated by purselves
@@ -30,7 +111,7 @@ namespace Buffers {
    protected:
   /**
    * Constructor in which should be put prepared buffer.
-   * DO NOT DELETE MEMORY BY YOUSELF INSIDE OF THIS CLASS !!
+   * DO NOT DELETE MEMORY BY YOURSELF INSIDE OF THIS CLASS !!
    * @param pMsg Pointer to the buffer
    * @param size Size of the buffer
    */
@@ -41,186 +122,18 @@ namespace Buffers {
     }
 
    public:
-    /**
-     * Method for packing in buffer constant or temporary data
-     * @tparam T Type of packing data
-     * @param t Data for packing
-     * @return Return true if packing is succeed, false otherwise
-     */
     template<typename T>
-    bool put(T const &t) {
-      bool result = false;
-      if ((data_size_ + sizeof(T)) <= kSize_) {
-        const uint8_t *p_start_ = reinterpret_cast<const uint8_t *>(&t);
-        std::copy(p_start_, p_start_ + sizeof(T), p_msg_ + data_size_);
-        data_size_ += sizeof(T);
-        result = true;
-      }
+    bool put(T && t) {
+      auto pMsg = p_msg_ + data_size_;
+      auto size = kSize_ - data_size_;
+      auto packer = DelegatePackBuffer<
+          typename std::remove_reference<
+            typename std::remove_cv<T>::type
+                                        >::type
+                                      >(pMsg, size);
+      bool result = packer.put(std::forward<T>(t));
+      data_size_ = kSize_ - size;
       return result;
-    }
-
-    /**
-     * Method for packing in buffer lvalue data
-     * @tparam T Type of packing data
-     * @param t Data for packing
-     * @return Return true if packing is succeed, false otherwise
-     */
-    template<typename T>
-    bool put(T &t) {
-      return put(static_cast<T const &>(t));
-    }
-
-    /**
-     * Method for packing std::vector in buffer
-     * @tparam T Type of std::vector
-     * @param vec std::vector for packing
-     * @return Return true if packing is succeed, false otherwise
-     */
-    template <typename T>
-    bool put(const std::vector<T> & vec) {
-      bool result = false;
-      if (vec.size() > 0) {
-          if (this->put(vec.size()) && (data_size_ + vec.size() <= kSize_)) {
-              std::copy(vec.data(), vec.data() + vec.size(), (T*)(p_msg_+data_size_));
-              data_size_ += vec.size() * sizeof(T);
-              result = true;
-          }
-      }
-      return result;
-    }
-
-    /**
-     * Method for packing rvalue std::vector in buffer
-     * @tparam T Type of std::vector
-     * @param vec rvalue std::vector for packing
-     * @return Return true if packing is succeed, false otherwise
-     */
-    template <typename T>
-    bool put(std::vector<T> && vec) {
-      bool result = false;
-      if (vec.size() > 0) {
-          if (this->put(vec.size()) && (data_size_ + vec.size() <= kSize_)) {
-              std::move(vec.data(), vec.data() + vec.size(), (T*)(p_msg_+data_size_));
-              data_size_ += vec.size() * sizeof(T);
-              result = true;
-          }
-      }
-      return result;
-    }
-
-    /**
-     * Method for packing std::list in buffer
-     * @tparam T Type of std::list
-     * @param lst std::list for packing
-     * @return Return true if packing is succeed, false otherwise
-     */
-    template <typename T>
-    bool put(const std::list<T> & lst) {
-      bool result = false;
-      if (lst.size() > 0) {
-        if (this->put(lst.size()) && (data_size_ + lst.size() <= kSize_)) {
-          for (auto ve : lst) {
-            this->put(ve);
-          }
-          result = true;
-        }
-      }
-      return result;
-    }
-
-    /**
-     * Method for packing rvalue std::list in buffer
-     * @tparam T Type of std::list
-     * @param lst rvalue std::list for packing
-     * @return Return true if packing is succeed, false otherwise
-     */
-    template <typename T>
-    bool put(std::list<T> && lst) {
-      bool result = false;
-      if (lst.size() > 0) {
-          if (this->put(lst.size()) && (data_size_ + lst.size() <= kSize_)) {
-              for (auto ve : lst) {
-                this->put(ve);
-              }
-              result = true;
-          }
-      }
-      return result;
-    }
-
-    /**
-     * Method for packing in buffer array of data
-     * @tparam T Type of packing data
-     * @param t Pointer on first element of packing data
-     * @param data_len Length of data to be stored
-     * @return Return true if packing is succeed, false otherwise
-     */
-    template<typename T>
-    bool put(T *t, size_t data_len) {
-      bool result = false;
-      if (t && (data_size_ + sizeof(data_len) + sizeof(T) * data_len) <= kSize_) {
-        if (put<size_t>(data_len)) {
-          const uint8_t *p_start_ = reinterpret_cast<const uint8_t *>(t);
-          std::copy(p_start_, p_start_ + sizeof(T) * data_len, p_msg_ + data_size_);
-          data_size_ += sizeof(T) * data_len;
-          result = true;
-        }
-      }
-      return result;
-    }
-
-    /**
-     * Method for packing in buffer constant or temporary standard string
-     * @param str String for packing
-     * @return Return true if packing is succeed, false otherwise
-     */
-    bool put(const std::string &str) {
-      bool result = false;
-      int kCStringLen = str.size() + 1;
-      if ((data_size_ + kCStringLen) <= kSize_) {
-        const uint8_t *p_start_ = reinterpret_cast<const uint8_t *>(str.c_str());
-        std::copy(p_start_, p_start_ + kCStringLen, p_msg_ + data_size_);
-        data_size_ += kCStringLen;
-        result = true;
-      }
-      return result;
-    }
-
-    /**
-     * Method for packing in buffer lvalue standard string
-     * @param str String for packing
-     * @return Return true if packing is succeed, false otherwise
-     */
-    bool put(std::string &str) {
-      return put(static_cast<const std::string &>(str));
-    }
-
-    /**
-     * Specialization for const null-terminated string
-     * @param str Null-terminated string
-     * @return Return true if packing is succeed, false otherwise
-     */
-    bool put(const char *str) {
-      bool result = false;
-      if (str) {
-        int kCStringLen = std::strlen(str) + 1;
-        if ((data_size_ + kCStringLen) <= kSize_) {
-          const uint8_t *p_start_ = reinterpret_cast<const uint8_t *>(str);
-          std::copy(p_start_, p_start_ + kCStringLen, p_msg_ + data_size_);
-          data_size_ += kCStringLen;
-          result = true;
-        }
-      }
-      return result;
-    }
-
-    /**
-     * Specialization for null-terminated string
-     * @param str Null-terminated string
-     * @return Return true if packing is succeed, false otherwise
-     */
-    bool put(char *str) {
-      return put(static_cast<const char *>(str));
     }
 
     /**
@@ -265,13 +178,334 @@ namespace Buffers {
    protected:
     uint8_t *p_msg_;
     const size_t kSize_;
-
     size_t data_size_;
   };
 
   inline
   PackBuffer::~PackBuffer() {
   }
+
+  /**
+   * Specialization DelegatePackBuffer class for char*
+   */
+  template <>
+  class PackBuffer::DelegatePackBuffer<char*> {
+   private:
+    uint8_t *& p_msg_;
+    size_t & size_;
+
+   public:
+    DelegatePackBuffer(uint8_t *& pMsg, size_t & size)
+        : p_msg_(pMsg),
+          size_(size) {
+    }
+
+    /**
+     * Specialization for const null-terminated string
+     * @param str Null-terminated string
+     * @return Return true if packing is succeed, false otherwise
+     */
+    bool put(const char *str) {
+      bool result = false;
+      if (str) {
+        int kCStringLen = std::strlen(str) + 1;
+        if (kCStringLen <= size_) {
+          const uint8_t *p_start_ = reinterpret_cast<const uint8_t *>(str);
+          std::copy(p_start_, p_start_ + kCStringLen, p_msg_);
+          size_ -= kCStringLen;
+          p_msg_ += kCStringLen;
+          result = true;
+        }
+      }
+      return result;
+    }
+
+    /**
+     * Specialization for null-terminated string
+     * @param str Null-terminated string
+     * @return Return true if packing is succeed, false otherwise
+     */
+    bool put(char *str) {
+      return this->put(static_cast<const char *>(str));
+    }
+  };
+
+  /**
+   * Specialization DelegatePackBuffer class for std::string
+   */
+  template <>
+  class PackBuffer::DelegatePackBuffer<std::string> {
+   private:
+    uint8_t *& p_msg_;
+    size_t & size_;
+
+   public:
+    DelegatePackBuffer(uint8_t *& pMsg, size_t & size)
+        : p_msg_(pMsg),
+          size_(size) {
+    }
+
+    /**
+     * Method for packing in buffer constant or temporary standard string
+     * @param str String for packing
+     * @return Return true if packing is succeed, false otherwise
+     */
+    bool put(const std::string &str) {
+      bool result = false;
+      int kCStringLen = str.size() + 1;
+      if (kCStringLen <= size_) {
+        const uint8_t *p_start_ = reinterpret_cast<const uint8_t *>(str.c_str());
+        std::copy(p_start_, p_start_ + kCStringLen, p_msg_);
+        size_ -= kCStringLen;
+        p_msg_ += kCStringLen;
+        result = true;
+      }
+      return result;
+    }
+
+    /**
+     * Method for packing in buffer lvalue standard string
+     * @param str String for packing
+     * @return Return true if packing is succeed, false otherwise
+     */
+    bool put(std::string &str) {
+      return put(static_cast<const std::string &>(str));
+    }
+  };
+
+  /**
+   * Specialization DelegatePackBuffer class for std::vector
+   * @tparam T Type of data under std::vector
+   */
+  template <typename T>
+  class PackBuffer::DelegatePackBuffer<std::vector<T>> {
+   private:
+    uint8_t *& p_msg_;
+    size_t & size_;
+
+   public:
+    DelegatePackBuffer(uint8_t *& pMsg, size_t & size)
+        : p_msg_(pMsg),
+          size_(size) {
+    }
+
+    /**
+     * Method for packing std::vector in buffer
+     * @tparam T Type of std::vector
+     * @param vec std::vector for packing
+     * @return Return true if packing is succeed, false otherwise
+     */
+    bool put(const std::vector<T> & vec) {
+      bool result = false;
+      if (vec.size() > 0) {
+        if (DelegatePackBuffer<decltype(vec.size())>(p_msg_, size_).put(vec.size()) &&
+            vec.size() <= size_) {
+          std::copy(vec.data(), vec.data() + vec.size(), (T*)(p_msg_));
+          size_ -= vec.size() * sizeof(T);
+          p_msg_ += vec.size() * sizeof(T);
+          result = true;
+        }
+      }
+      return result;
+    }
+
+    /**
+     * Method for packing rvalue std::vector in buffer
+     * @tparam T Type of std::vector
+     * @param vec rvalue std::vector for packing
+     * @return Return true if packing is succeed, false otherwise
+     */
+    bool put(std::vector<T> && vec) {
+      bool result = false;
+      if (vec.size() > 0) {
+        if (DelegatePackBuffer<decltype(vec.size())>(p_msg_, size_).put(vec.size()) &&
+            vec.size() <= size_) {
+          std::move(vec.data(), vec.data() + vec.size(), (T*)(p_msg_));
+          size_t writtenSize = vec.size() * sizeof(T);
+          p_msg_ += writtenSize;
+          size_ -= writtenSize;
+          result = true;
+        }
+      }
+      return result;
+    }
+  };
+
+  /**
+   * Specialization DelegatePackBuffer class for std::list
+   * @tparam T Type of data under std::list
+   */
+  template <typename T>
+  class PackBuffer::DelegatePackBuffer<std::list<T>> {
+   private:
+    uint8_t *& p_msg_;
+    size_t & size_;
+
+   public:
+    DelegatePackBuffer(uint8_t *& pMsg, size_t & size)
+        : p_msg_(pMsg),
+          size_(size) {
+    }
+
+    /**
+     * Method for packing std::list in buffer
+     * @tparam T Type of std::list
+     * @param lst std::list for packing
+     * @return Return true if packing is succeed, false otherwise
+     */
+    bool put(const std::list<T> & lst) {
+      bool result = false;
+      if (lst.size() > 0) {
+        if (DelegatePackBuffer<decltype(lst.size())>(p_msg_, size_).put(lst.size()) &&
+            lst.size() <= size_) {
+          for (auto ve : lst) {
+            DelegatePackBuffer<T>(p_msg_, size_).put(ve);
+          }
+          result = true;
+        }
+      }
+      return result;
+    }
+
+    /**
+     * Method for packing rvalue std::list in buffer
+     * @tparam T Type of std::list
+     * @param lst rvalue std::list for packing
+     * @return Return true if packing is succeed, false otherwise
+     */
+    bool put(std::list<T> && lst) {
+      bool result = false;
+      if (lst.size() > 0) {
+        if (DelegatePackBuffer<decltype(lst.size())>(p_msg_, size_).put(lst.size()) &&
+            lst.size() <= size_) {
+          for (auto ve : lst) {
+            DelegatePackBuffer<T>(p_msg_, size_).put(ve);
+          }
+          result = true;
+        }
+      }
+      return result;
+    }
+  };
+
+  /**
+   * Specialization DelegatePackBuffer class for std::set
+   * @tparam K Type of data under std::set
+   */
+  template <typename K>
+  class PackBuffer::DelegatePackBuffer<std::set<K>> {
+   private:
+    uint8_t *& p_msg_;
+    size_t & size_;
+
+   public:
+    DelegatePackBuffer(uint8_t *& pMsg, size_t & size)
+        : p_msg_(pMsg),
+          size_(size) {
+    }
+
+    /**
+     * Method for packing std::set in buffer
+     * @tparam K Type of std::set
+     * @param mp std::set for packing
+     * @return Return true if packing is succeed, false otherwise
+     */
+    bool put(const std::set<K> & mp) {
+      bool result = false;
+      if (mp.size() > 0) {
+        if (DelegatePackBuffer<decltype(mp.size())>(p_msg_, size_).put(mp.size()) &&
+            mp.size() <= size_) {
+          for (auto& ve : mp) {
+            DelegatePackBuffer<K>(p_msg_, size_).put(ve);
+          }
+          result = true;
+        }
+      }
+      return result;
+    }
+
+    /**
+     * Method for packing rvalue std::set in buffer
+     * @tparam K Type of std::set
+     * @param mp rvalue std::set for packing
+     * @return Return true if packing is succeed, false otherwise
+     */
+    bool put(std::set<K> && mp) {
+      bool result = false;
+      if (mp.size() > 0) {
+        if (DelegatePackBuffer<decltype(mp.size())>(p_msg_, size_).put(mp.size()) &&
+            mp.size() <= size_) {
+          for (auto& ve : mp) {
+            DelegatePackBuffer<K>(p_msg_, size_).put(ve);
+          }
+          result = true;
+        }
+      }
+      return result;
+    }
+  };
+
+  /**
+   * Specialization DelegatePackBuffer class for std::map
+   * @tparam K Key of std::map
+   * @tparam V Value of std::map
+   */
+  template <typename K, typename V>
+  class PackBuffer::DelegatePackBuffer<std::map<K, V>> {
+   private:
+    uint8_t *& p_msg_;
+    size_t & size_;
+
+   public:
+    DelegatePackBuffer(uint8_t *& pMsg, size_t & size)
+        : p_msg_(pMsg),
+          size_(size) {
+    }
+
+    /**
+     * Method for packing std::map in buffer
+     * @tparam K Key of std::map
+     * @tparam V Value of std::map
+     * @param mp std::map for packing
+     * @return Return true if packing is succeed, false otherwise
+     */
+    bool put(const std::map<K, V> & mp) {
+      bool result = false;
+      if (mp.size() > 0) {
+        if (DelegatePackBuffer<decltype(mp.size())>(p_msg_, size_).put(mp.size()) &&
+            mp.size() <= size_) {
+          for (auto& ve : mp) {
+            DelegatePackBuffer<K>(p_msg_, size_).put(ve.first);
+            DelegatePackBuffer<V>(p_msg_, size_).put(ve.second);
+          }
+          result = true;
+        }
+      }
+      return result;
+    }
+
+    /**
+     * Method for packing rvalue std::map in buffer
+     * @tparam K Key of std::map
+     * @tparam V Value of std::map
+     * @param mp std::map for packing
+     * @return Return true if packing is succeed, false otherwise
+     */
+    bool put(std::map<K, V> && mp) {
+      bool result = false;
+      if (mp.size() > 0) {
+        if (DelegatePackBuffer<decltype(mp.size())>(p_msg_, size_).put(mp.size()) &&
+            mp.size() <= size_) {
+          for (auto& ve : mp) {
+            DelegatePackBuffer<K>(p_msg_, size_).put(ve.first);
+            DelegatePackBuffer<V>(p_msg_, size_).put(ve.second);
+          }
+          result = true;
+        }
+      }
+      return result;
+    }
+  };
 }
 
 #endif //BUFFERS_PACKBUFFER_HPP

@@ -55,14 +55,8 @@ namespace Buffers {
       return unpacker.get(p_pos_);
     }
 
-    /**
-     * Specialization for null-terminated string
-     * @return Null-terminated string
-     */
     const char *get() {
-      const char *t = reinterpret_cast<const char *>(p_pos_);
-      p_pos_ += std::strlen(t) + 1;
-      return t;
+      return this->get<const char*>();
     }
 
     /**
@@ -75,6 +69,38 @@ namespace Buffers {
    private:
     uint8_t const *p_pos_;
     uint8_t const *p_msg_;
+  };
+
+  /**
+   * Specialization for null-terminated string
+   * @return Null-terminated string
+   */
+  template<>
+  char *UnpackBuffer::get<char*>() = delete;
+
+  template<>
+  class UnpackBuffer::DelegateUnpackBuffer<const char *> {
+   public:
+    /**
+     * Specialization for null-terminated string
+     * @return Null-terminated string
+     */
+    const char *get(uint8_t const *& p_pos_) {
+      std::cout << "DelegateUnpackBuffer<const char *>" << std::endl;
+      const char *t = reinterpret_cast<const char *>(p_pos_);
+      p_pos_ += std::strlen(t) + 1;
+      return t;
+    }
+  };
+
+  template<>
+  class UnpackBuffer::DelegateUnpackBuffer<std::string> {
+   public:
+    std::string get(uint8_t const *& p_pos_) {
+      std::cout << "DelegateUnpackBuffer<std::string>" << std::endl;
+      std::string result = DelegateUnpackBuffer<const char*>().get(p_pos_);
+      return std::move(result);
+    }
   };
 
   template<typename T>
@@ -98,6 +124,38 @@ namespace Buffers {
       auto size = DelegateUnpackBuffer< typename std::vector<T>::size_type >().get(p_pos_);
       for (int i = 0; i < size; ++i) {
         result.push_back(DelegateUnpackBuffer<T>().get(p_pos_));
+      }
+      return std::move(result);
+    }
+  };
+
+  template<typename K>
+  class UnpackBuffer::DelegateUnpackBuffer<std::set<K>> {
+   public:
+    std::set<K> get(uint8_t const *& p_pos_) {
+      std::set<K> result;
+      auto size = DelegateUnpackBuffer< typename std::set<K>::size_type >().get(p_pos_);
+      for (int i = 0; i < size; ++i) {
+        auto key = DelegateUnpackBuffer<K>().get(p_pos_);
+        std::cout << "key is " << key << std::endl;
+        result.insert(key);
+      }
+      return std::move(result);
+    }
+  };
+
+  template<typename K, typename V>
+  class UnpackBuffer::DelegateUnpackBuffer<std::map<K, V>> {
+   public:
+    std::map<K, V> get(uint8_t const *& p_pos_) {
+      std::map<K, V> result;
+      auto size = DelegateUnpackBuffer< typename std::map<K, V>::size_type >().get(p_pos_);
+      for (int i = 0; i < size; ++i) {
+        auto key = DelegateUnpackBuffer<K>().get(p_pos_);
+        std::cout << "key is " << key << std::endl;
+        auto value = DelegateUnpackBuffer<V>().get(p_pos_);
+        std::cout << "value is " << value << std::endl;
+        result[key] = value;
       }
       return std::move(result);
     }
