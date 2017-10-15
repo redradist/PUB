@@ -13,6 +13,10 @@
 #include <cstring>
 #include <vector>
 #include <list>
+#include <set>
+#include <map>
+#include <unordered_set>
+#include <unordered_map>
 
 namespace Buffers {
   /**
@@ -86,7 +90,6 @@ namespace Buffers {
      * @return Null-terminated string
      */
     const char *get(uint8_t const *& p_pos_) {
-      std::cout << "DelegateUnpackBuffer<const char *>" << std::endl;
       const char *t = reinterpret_cast<const char *>(p_pos_);
       p_pos_ += std::strlen(t) + 1;
       return t;
@@ -97,7 +100,6 @@ namespace Buffers {
   class UnpackBuffer::DelegateUnpackBuffer<std::string> {
    public:
     std::string get(uint8_t const *& p_pos_) {
-      std::cout << "DelegateUnpackBuffer<std::string>" << std::endl;
       std::string result = DelegateUnpackBuffer<const char*>().get(p_pos_);
       return std::move(result);
     }
@@ -137,9 +139,19 @@ namespace Buffers {
       auto size = DelegateUnpackBuffer< typename std::set<K>::size_type >().get(p_pos_);
       for (int i = 0; i < size; ++i) {
         auto key = DelegateUnpackBuffer<K>().get(p_pos_);
-        std::cout << "key is " << key << std::endl;
         result.insert(key);
       }
+      return std::move(result);
+    }
+  };
+
+  template<typename K, typename V>
+  class UnpackBuffer::DelegateUnpackBuffer<std::pair<K, V>> {
+   public:
+    std::pair<K, V> get(uint8_t const *& p_pos_) {
+      std::pair<K, V> result;
+      result.first = DelegateUnpackBuffer<K>().get(p_pos_);
+      result.second = DelegateUnpackBuffer<V>().get(p_pos_);
       return std::move(result);
     }
   };
@@ -152,9 +164,36 @@ namespace Buffers {
       auto size = DelegateUnpackBuffer< typename std::map<K, V>::size_type >().get(p_pos_);
       for (int i = 0; i < size; ++i) {
         auto key = DelegateUnpackBuffer<K>().get(p_pos_);
-        std::cout << "key is " << key << std::endl;
         auto value = DelegateUnpackBuffer<V>().get(p_pos_);
-        std::cout << "value is " << value << std::endl;
+        result[key] = value;
+      }
+      return std::move(result);
+    }
+  };
+
+  template<typename K>
+  class UnpackBuffer::DelegateUnpackBuffer<std::unordered_set<K>> {
+   public:
+    std::unordered_set<K> get(uint8_t const *& p_pos_) {
+      std::unordered_set<K> result;
+      auto size = DelegateUnpackBuffer< typename std::unordered_set<K>::size_type >().get(p_pos_);
+      for (int i = 0; i < size; ++i) {
+        auto key = DelegateUnpackBuffer<K>().get(p_pos_);
+        result.insert(key);
+      }
+      return std::move(result);
+    }
+  };
+
+  template<typename K, typename V>
+  class UnpackBuffer::DelegateUnpackBuffer<std::unordered_map<K, V>> {
+   public:
+    std::unordered_map<K, V> get(uint8_t const *& p_pos_) {
+      std::unordered_map<K, V> result;
+      auto size = DelegateUnpackBuffer< typename std::unordered_map<K, V>::size_type >().get(p_pos_);
+      for (int i = 0; i < size; ++i) {
+        auto key = DelegateUnpackBuffer<K>().get(p_pos_);
+        auto value = DelegateUnpackBuffer<V>().get(p_pos_);
         result[key] = value;
       }
       return std::move(result);
