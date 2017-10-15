@@ -14,6 +14,10 @@
 #include <string>
 #include <vector>
 #include <list>
+#include <set>
+#include <map>
+#include <unordered_set>
+#include <unordered_map>
 #include <algorithm>
 
 namespace Buffers {
@@ -368,24 +372,9 @@ namespace Buffers {
     }
 
     /**
-     * Method for packing rvalue std::list in buffer
-     * @tparam T Type of std::list
-     * @param lst rvalue std::list for packing
-     * @return Return true if packing is succeed, false otherwise
+     * Move semantic is not supported for std::list
      */
-    bool put(std::list<T> && lst) {
-      bool result = false;
-      if (lst.size() > 0) {
-        if (DelegatePackBuffer<decltype(lst.size())>(p_msg_, size_).put(lst.size()) &&
-            lst.size() <= size_) {
-          for (auto ve : lst) {
-            DelegatePackBuffer<T>(p_msg_, size_).put(ve);
-          }
-          result = true;
-        }
-      }
-      return result;
-    }
+    bool put(std::list<T> && lst) = delete;
   };
 
   /**
@@ -425,24 +414,45 @@ namespace Buffers {
     }
 
     /**
-     * Method for packing rvalue std::set in buffer
-     * @tparam K Type of std::set
-     * @param mp rvalue std::set for packing
+     * Move semantic is not supported for std::set
+     */
+    bool put(std::set<K> && mp) = delete;
+  };
+
+  /**
+   * Specialization DelegatePackBuffer class for std::pair
+   * @tparam K First value of std::pair
+   * @tparam V Second value of std::pair
+   */
+  template <typename K, typename V>
+  class PackBuffer::DelegatePackBuffer<std::pair<K, V>> {
+   private:
+    uint8_t *& p_msg_;
+    size_t & size_;
+
+   public:
+    DelegatePackBuffer(uint8_t *& pMsg, size_t & size)
+        : p_msg_(pMsg),
+          size_(size) {
+    }
+
+    /**
+     * Method for packing std::map in buffer
+     * @tparam K Key of std::map
+     * @tparam V Value of std::map
+     * @param mp std::map for packing
      * @return Return true if packing is succeed, false otherwise
      */
-    bool put(std::set<K> && mp) {
-      bool result = false;
-      if (mp.size() > 0) {
-        if (DelegatePackBuffer<decltype(mp.size())>(p_msg_, size_).put(mp.size()) &&
-            mp.size() <= size_) {
-          for (auto& ve : mp) {
-            DelegatePackBuffer<K>(p_msg_, size_).put(ve);
-          }
-          result = true;
-        }
-      }
-      return result;
+    bool put(const std::pair<K, V> & pr) {
+      DelegatePackBuffer<K>(p_msg_, size_).put(pr.first);
+      DelegatePackBuffer<V>(p_msg_, size_).put(pr.second);
+      return true;
     }
+
+    /**
+     * Move semantic is not supported for std::map
+     */
+    bool put(std::pair<K, V> && mp) = delete;
   };
 
   /**
@@ -485,13 +495,78 @@ namespace Buffers {
     }
 
     /**
-     * Method for packing rvalue std::map in buffer
-     * @tparam K Key of std::map
-     * @tparam V Value of std::map
-     * @param mp std::map for packing
+     * Move semantic is not supported for std::map
+     */
+    bool put(std::map<K, V> && mp) = delete;
+  };
+
+  /**
+   * Specialization DelegatePackBuffer class for std::unordered_set
+   * @tparam K Type of data under std::unordered_set
+   */
+  template <typename K>
+  class PackBuffer::DelegatePackBuffer<std::unordered_set<K>> {
+   private:
+    uint8_t *& p_msg_;
+    size_t & size_;
+
+   public:
+    DelegatePackBuffer(uint8_t *& pMsg, size_t & size)
+        : p_msg_(pMsg),
+          size_(size) {
+    }
+
+    /**
+     * Method for packing std::unordered_set in buffer
+     * @tparam K Type of std::unordered_set
+     * @param mp std::unordered_set for packing
      * @return Return true if packing is succeed, false otherwise
      */
-    bool put(std::map<K, V> && mp) {
+    bool put(const std::unordered_set<K> & mp) {
+      bool result = false;
+      if (mp.size() > 0) {
+        if (DelegatePackBuffer<decltype(mp.size())>(p_msg_, size_).put(mp.size()) &&
+            mp.size() <= size_) {
+          for (auto& ve : mp) {
+            DelegatePackBuffer<K>(p_msg_, size_).put(ve);
+          }
+          result = true;
+        }
+      }
+      return result;
+    }
+
+    /**
+     * Move semantic is not supported for std::unordered_set
+     */
+    bool put(std::unordered_set<K> && mp) = delete;
+  };
+
+  /**
+   * Specialization DelegatePackBuffer class for std::unordered_map
+   * @tparam K Key of std::unordered_map
+   * @tparam V Value of std::unordered_map
+   */
+  template <typename K, typename V>
+  class PackBuffer::DelegatePackBuffer<std::unordered_map<K, V>> {
+   private:
+    uint8_t *& p_msg_;
+    size_t & size_;
+
+   public:
+    DelegatePackBuffer(uint8_t *& pMsg, size_t & size)
+        : p_msg_(pMsg),
+          size_(size) {
+    }
+
+    /**
+     * Method for packing std::unordered_map in buffer
+     * @tparam K Key of std::unordered_map
+     * @tparam V Value of std::unordered_map
+     * @param mp std::unordered_map for packing
+     * @return Return true if packing is succeed, false otherwise
+     */
+    bool put(const std::unordered_map<K, V> & mp) {
       bool result = false;
       if (mp.size() > 0) {
         if (DelegatePackBuffer<decltype(mp.size())>(p_msg_, size_).put(mp.size()) &&
@@ -505,6 +580,11 @@ namespace Buffers {
       }
       return result;
     }
+
+    /**
+     * Move semantic is not supported for std::unordered_map
+     */
+    bool put(std::unordered_map<K, V> && mp) = delete;
   };
 }
 
