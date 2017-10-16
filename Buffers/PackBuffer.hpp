@@ -27,84 +27,11 @@ namespace Buffers {
   class PackBuffer {
    private:
     /**
-     * Class which PackBuffer delegate real unpacking of data
-     * @tparam T Data to unpack
+     * Forward declaration of real delegate pack buffer
+     * @tparam T Type for packing
      */
     template <typename T>
-    class DelegatePackBuffer {
-     private:
-      uint8_t *& p_msg_;
-      size_t & size_;
-
-     public:
-      DelegatePackBuffer(uint8_t *& pMsg, size_t & size)
-          : p_msg_(pMsg),
-            size_(size) {
-      }
-
-      /**
-       * Method for packing in buffer constant or temporary data
-       * @tparam T Type of packing data
-       * @param t Data for packing
-       * @return Return true if packing is succeed, false otherwise
-       */
-      bool put(const T & t) {
-        bool result = false;
-        if (sizeof(T) <= size_) {
-          const uint8_t *p_start_ = reinterpret_cast<const uint8_t *>(&t);
-          std::copy(p_start_, p_start_ + sizeof(T), p_msg_);
-          size_t writtenSize = sizeof(T);
-          p_msg_ += writtenSize;
-          size_ -= writtenSize;
-          result = true;
-        }
-        return result;
-      }
-
-      /**
-       * Method for packing in buffer array of data
-       * @tparam dataLen Array lenght
-       * @param t Array to packing data
-       * @return Return true if packing is succeed, false otherwise
-       */
-      template <size_t dataLen>
-      bool put(const T t[dataLen]) {
-        bool result = false;
-        if (t && (sizeof(dataLen) + sizeof(T) * dataLen) <= size_) {
-          if (this->put(dataLen)) {
-            const uint8_t *p_start_ = reinterpret_cast<const uint8_t *>(t);
-            std::copy(p_start_, p_start_ + sizeof(T) * dataLen, p_msg_);
-            size_t writtenSize = sizeof(T) * dataLen;
-            p_msg_ += writtenSize;
-            size_ -= writtenSize;
-            result = true;
-          }
-        }
-        return result;
-      }
-
-      /**
-       * Method for packing in buffer array of data
-       * @tparam T Type of packing data
-       * @param t Pointer on first element of packing data
-       * @param dataLen Length of data to be stored
-       * @return Return true if packing is succeed, false otherwise
-       */
-      bool put(T * t, size_t dataLen) {
-        bool result = false;
-        if (t && (sizeof(dataLen) + sizeof(T) * dataLen) <= size_) {
-          if (this->put(dataLen)) {
-            const uint8_t *p_start_ = reinterpret_cast<const uint8_t *>(t);
-            std::copy(p_start_, p_start_ + sizeof(T) * dataLen, p_msg_);
-            size_t writtenSize = sizeof(T) * dataLen;
-            p_msg_ += writtenSize;
-            size_ -= writtenSize;
-            result = true;
-          }
-        }
-        return result;
-      }
-    };
+    class DelegatePackBuffer;
 
    public:
     /**
@@ -188,6 +115,88 @@ namespace Buffers {
   inline
   PackBuffer::~PackBuffer() {
   }
+
+  /**
+   * Class which PackBuffer delegate real unpacking of data for trivial type
+   * @tparam T Data to unpack. Should be a trivial type
+   */
+  template <typename T>
+  class PackBuffer::DelegatePackBuffer {
+    static_assert(std::is_trivial<T>::value, "Type T is not a trivial type !!");
+
+   private:
+    uint8_t *& p_msg_;
+    size_t & size_;
+
+   public:
+    DelegatePackBuffer(uint8_t *& pMsg, size_t & size)
+        : p_msg_(pMsg),
+          size_(size) {
+    }
+
+    /**
+     * Method for packing in buffer constant or temporary data
+     * @tparam T Type of packing data
+     * @param t Data for packing
+     * @return Return true if packing is succeed, false otherwise
+     */
+    bool put(const T & t) {
+      bool result = false;
+      if (sizeof(T) <= size_) {
+        const uint8_t *p_start_ = reinterpret_cast<const uint8_t *>(&t);
+        std::copy(p_start_, p_start_ + sizeof(T), p_msg_);
+        size_t writtenSize = sizeof(T);
+        p_msg_ += writtenSize;
+        size_ -= writtenSize;
+        result = true;
+      }
+      return result;
+    }
+
+    /**
+     * Method for packing in buffer array of data
+     * @tparam dataLen Array lenght
+     * @param t Array to packing data
+     * @return Return true if packing is succeed, false otherwise
+     */
+    template <size_t dataLen>
+    bool put(const T t[dataLen]) {
+      bool result = false;
+      if (t && (sizeof(dataLen) + sizeof(T) * dataLen) <= size_) {
+        if (this->put(dataLen)) {
+          const uint8_t *p_start_ = reinterpret_cast<const uint8_t *>(t);
+          std::copy(p_start_, p_start_ + sizeof(T) * dataLen, p_msg_);
+          size_t writtenSize = sizeof(T) * dataLen;
+          p_msg_ += writtenSize;
+          size_ -= writtenSize;
+          result = true;
+        }
+      }
+      return result;
+    }
+
+    /**
+     * Method for packing in buffer array of data
+     * @tparam T Type of packing data
+     * @param t Pointer on first element of packing data
+     * @param dataLen Length of data to be stored
+     * @return Return true if packing is succeed, false otherwise
+     */
+    bool put(T * t, size_t dataLen) {
+      bool result = false;
+      if (t && (sizeof(dataLen) + sizeof(T) * dataLen) <= size_) {
+        if (this->put(dataLen)) {
+          const uint8_t *p_start_ = reinterpret_cast<const uint8_t *>(t);
+          std::copy(p_start_, p_start_ + sizeof(T) * dataLen, p_msg_);
+          size_t writtenSize = sizeof(T) * dataLen;
+          p_msg_ += writtenSize;
+          size_ -= writtenSize;
+          result = true;
+        }
+      }
+      return result;
+    }
+  };
 
   /**
    * Specialization DelegatePackBuffer class for char*
