@@ -40,12 +40,12 @@ namespace Buffers {
     virtual ~PackBuffer() = 0;
 
    protected:
-  /**
-   * Constructor in which should be put prepared buffer.
-   * DO NOT DELETE MEMORY BY YOURSELF INSIDE OF THIS CLASS !!
-   * @param pMsg Pointer to the buffer
-   * @param size Size of the buffer
-   */
+    /**
+     * Constructor in which should be put prepared buffer.
+     * DO NOT DELETE MEMORY BY YOURSELF INSIDE OF THIS CLASS !!
+     * @param pMsg Pointer to the buffer
+     * @param size Size of the buffer
+     */
     PackBuffer(uint8_t *pMsg, const size_t size)
         : p_msg_(pMsg),
           kSize_(size),
