@@ -71,6 +71,34 @@ namespace Buffers {
       return result;
     }
 
+    template <typename T, size_t dataLen>
+    bool put(const T t[dataLen]) {
+      auto pMsg = p_msg_ + data_size_;
+      auto size = kSize_ - data_size_;
+      auto packer = DelegatePackBuffer<T>{pMsg, size};
+#if __cplusplus > 199711L
+      static_assert(std::is_same<decltype(packer.p_msg_), uint8_t *&>::value , "Is not uint8_t *&");
+      static_assert(std::is_same<decltype(packer.size_), size_t &>::value , "Is not size_t &");
+#endif
+      bool result = packer.put(t);
+      data_size_ = kSize_ - size;
+      return result;
+    }
+
+    template<typename T>
+    bool put(T * t, size_t dataLen) {
+      auto pMsg = p_msg_ + data_size_;
+      auto size = kSize_ - data_size_;
+      auto packer = DelegatePackBuffer<T>{pMsg, size};
+#if __cplusplus > 199711L
+      static_assert(std::is_same<decltype(packer.p_msg_), uint8_t *&>::value , "Is not uint8_t *&");
+      static_assert(std::is_same<decltype(packer.size_), size_t &>::value , "Is not size_t &");
+#endif
+      bool result = packer.put(t, dataLen);
+      data_size_ = kSize_ - size;
+      return result;
+    }
+
     /**
      * Method for reset packing data to the buffer
      */
@@ -164,7 +192,7 @@ namespace Buffers {
     bool put(const T t[dataLen]) {
       bool result = false;
       if (t && (sizeof(dataLen) + sizeof(T) * dataLen) <= size_) {
-        if (this->put(dataLen)) {
+        if (DelegatePackBuffer<decltype(dataLen)>{p_msg_, size_}.put(dataLen)) {
           const uint8_t *p_start_ = reinterpret_cast<const uint8_t *>(t);
           std::copy(p_start_, p_start_ + sizeof(T) * dataLen, p_msg_);
           size_t writtenSize = sizeof(T) * dataLen;
@@ -186,7 +214,7 @@ namespace Buffers {
     bool put(T * t, size_t dataLen) {
       bool result = false;
       if (t && (sizeof(dataLen) + sizeof(T) * dataLen) <= size_) {
-        if (this->put(dataLen)) {
+        if (DelegatePackBuffer<decltype(dataLen)>{p_msg_, size_}.put(dataLen)) {
           const uint8_t *p_start_ = reinterpret_cast<const uint8_t *>(t);
           std::copy(p_start_, p_start_ + sizeof(T) * dataLen, p_msg_);
           size_t writtenSize = sizeof(T) * dataLen;
@@ -221,8 +249,8 @@ namespace Buffers {
         if (kCStringLen <= size_) {
           const uint8_t *p_start_ = reinterpret_cast<const uint8_t *>(str);
           std::copy(p_start_, p_start_ + kCStringLen, p_msg_);
-          size_ -= kCStringLen;
           p_msg_ += kCStringLen;
+          size_ -= kCStringLen;
           result = true;
         }
       }
@@ -260,8 +288,8 @@ namespace Buffers {
       if (kCStringLen <= size_) {
         const uint8_t *p_start_ = reinterpret_cast<const uint8_t *>(str.c_str());
         std::copy(p_start_, p_start_ + kCStringLen, p_msg_);
-        size_ -= kCStringLen;
         p_msg_ += kCStringLen;
+        size_ -= kCStringLen;
         result = true;
       }
       return result;
@@ -273,7 +301,7 @@ namespace Buffers {
      * @return Return true if packing is succeed, false otherwise
      */
     bool put(std::string &str) {
-      return put(static_cast<const std::string &>(str));
+      return this->put(static_cast<const std::string &>(str));
     }
   };
 
@@ -300,8 +328,8 @@ namespace Buffers {
         if (DelegatePackBuffer<decltype(vec.size())>{p_msg_, size_}.put(vec.size()) &&
             vec.size() <= size_) {
           std::copy(vec.data(), vec.data() + vec.size(), (T*)(p_msg_));
-          size_ -= vec.size() * sizeof(T);
           p_msg_ += vec.size() * sizeof(T);
+          size_ -= vec.size() * sizeof(T);
           result = true;
         }
       }

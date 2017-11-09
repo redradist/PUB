@@ -205,7 +205,7 @@ TEST_F(StackPackBufferVectorTest, ValidVectorgTest1)
 {
   std::vector<double> vec0 = {1, 2, 3};
   std::vector<float> vec1 = {3, 2, 1};
-  ASSERT_EQ(buffer->put(vec0), true);
+  ASSERT_EQ(buffer->put(vec0.data(), vec0.size()), true);
   ASSERT_EQ(buffer->put(vec1), true);
   UnpackBuffer unbuffer(buffer->getData());
   ASSERT_EQ(unbuffer.get<std::vector<double>>(), vec0);
