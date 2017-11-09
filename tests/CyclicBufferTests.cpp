@@ -3,7 +3,7 @@
 //
 
 #include <gtest/gtest.h>
-#include "Buffers/CyclicBuffer.hpp"
+#include "src/CyclicBuffer.hpp"
 
 using Buffers::CyclicBuffer;
 
