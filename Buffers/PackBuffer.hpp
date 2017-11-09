@@ -56,10 +56,9 @@ namespace Buffers {
    public:
     template<typename T>
     bool put(T && t) {
-      using GeneralType =
-      typename std::remove_reference<
-          typename std::remove_cv<T>::type
-      >::type;
+      using GeneralType = typename std::remove_reference<
+                            typename std::remove_cv<T>::type
+                          >::type;
       auto pMsg = p_msg_ + data_size_;
       auto size = kSize_ - data_size_;
       auto packer = DelegatePackBuffer<GeneralType>{pMsg, size};
