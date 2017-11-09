@@ -19,6 +19,7 @@
 #include <unordered_set>
 #include <unordered_map>
 #include <algorithm>
+#include <type_traits>
 
 namespace Buffers {
   /**
@@ -55,13 +56,16 @@ namespace Buffers {
    public:
     template<typename T>
     bool put(T && t) {
+      using GeneralType = typename std::remove_reference<
+                            typename std::remove_cv<T>::type
+                          >::type;
       auto pMsg = p_msg_ + data_size_;
       auto size = kSize_ - data_size_;
-      auto packer = DelegatePackBuffer<
-          typename std::remove_reference<
-            typename std::remove_cv<T>::type
-                                        >::type
-                                      >(pMsg, size);
+      auto packer = DelegatePackBuffer<GeneralType>{pMsg, size};
+#if __cplusplus > 199711L
+      static_assert(std::is_same<decltype(packer.p_msg_), uint8_t *&>::value , "Is not uint8_t *&");
+      static_assert(std::is_same<decltype(packer.size_), size_t &>::value , "Is not size_t &");
+#endif
       bool result = packer.put(std::forward<T>(t));
       data_size_ = kSize_ - size;
       return result;
@@ -122,18 +126,15 @@ namespace Buffers {
    */
   template <typename T>
   class PackBuffer::DelegatePackBuffer {
+#if __cplusplus > 199711L
     static_assert(std::is_trivial<T>::value, "Type T is not a trivial type !!");
+#endif
 
-   private:
+   public:
     uint8_t *& p_msg_;
     size_t & size_;
 
    public:
-    DelegatePackBuffer(uint8_t *& pMsg, size_t & size)
-        : p_msg_(pMsg),
-          size_(size) {
-    }
-
     /**
      * Method for packing in buffer constant or temporary data
      * @tparam T Type of packing data
@@ -203,16 +204,11 @@ namespace Buffers {
    */
   template <>
   class PackBuffer::DelegatePackBuffer<char*> {
-   private:
+   public:
     uint8_t *& p_msg_;
     size_t & size_;
 
    public:
-    DelegatePackBuffer(uint8_t *& pMsg, size_t & size)
-        : p_msg_(pMsg),
-          size_(size) {
-    }
-
     /**
      * Specialization for const null-terminated string
      * @param str Null-terminated string
@@ -248,16 +244,11 @@ namespace Buffers {
    */
   template <>
   class PackBuffer::DelegatePackBuffer<std::string> {
-   private:
+   public:
     uint8_t *& p_msg_;
     size_t & size_;
 
    public:
-    DelegatePackBuffer(uint8_t *& pMsg, size_t & size)
-        : p_msg_(pMsg),
-          size_(size) {
-    }
-
     /**
      * Method for packing in buffer constant or temporary standard string
      * @param str String for packing
@@ -292,16 +283,11 @@ namespace Buffers {
    */
   template <typename T>
   class PackBuffer::DelegatePackBuffer<std::vector<T>> {
-   private:
+   public:
     uint8_t *& p_msg_;
     size_t & size_;
 
    public:
-    DelegatePackBuffer(uint8_t *& pMsg, size_t & size)
-        : p_msg_(pMsg),
-          size_(size) {
-    }
-
     /**
      * Method for packing std::vector in buffer
      * @tparam T Type of std::vector
@@ -311,7 +297,7 @@ namespace Buffers {
     bool put(const std::vector<T> & vec) {
       bool result = false;
       if (vec.size() > 0) {
-        if (DelegatePackBuffer<decltype(vec.size())>(p_msg_, size_).put(vec.size()) &&
+        if (DelegatePackBuffer<decltype(vec.size())>{p_msg_, size_}.put(vec.size()) &&
             vec.size() <= size_) {
           std::copy(vec.data(), vec.data() + vec.size(), (T*)(p_msg_));
           size_ -= vec.size() * sizeof(T);
@@ -331,7 +317,7 @@ namespace Buffers {
     bool put(std::vector<T> && vec) {
       bool result = false;
       if (vec.size() > 0) {
-        if (DelegatePackBuffer<decltype(vec.size())>(p_msg_, size_).put(vec.size()) &&
+        if (DelegatePackBuffer<decltype(vec.size())>{p_msg_, size_}.put(vec.size()) &&
             vec.size() <= size_) {
           std::move(vec.data(), vec.data() + vec.size(), (T*)(p_msg_));
           size_t writtenSize = vec.size() * sizeof(T);
@@ -350,16 +336,11 @@ namespace Buffers {
    */
   template <typename T>
   class PackBuffer::DelegatePackBuffer<std::list<T>> {
-   private:
+   public:
     uint8_t *& p_msg_;
     size_t & size_;
 
    public:
-    DelegatePackBuffer(uint8_t *& pMsg, size_t & size)
-        : p_msg_(pMsg),
-          size_(size) {
-    }
-
     /**
      * Method for packing std::list in buffer
      * @tparam T Type of std::list
@@ -369,10 +350,10 @@ namespace Buffers {
     bool put(const std::list<T> & lst) {
       bool result = false;
       if (lst.size() > 0) {
-        if (DelegatePackBuffer<decltype(lst.size())>(p_msg_, size_).put(lst.size()) &&
+        if (DelegatePackBuffer<decltype(lst.size())>{p_msg_, size_}.put(lst.size()) &&
             lst.size() <= size_) {
           for (auto ve : lst) {
-            DelegatePackBuffer<T>(p_msg_, size_).put(ve);
+            DelegatePackBuffer<T>{p_msg_, size_}.put(ve);
           }
           result = true;
         }
@@ -392,16 +373,11 @@ namespace Buffers {
    */
   template <typename K>
   class PackBuffer::DelegatePackBuffer<std::set<K>> {
-   private:
+   public:
     uint8_t *& p_msg_;
     size_t & size_;
 
    public:
-    DelegatePackBuffer(uint8_t *& pMsg, size_t & size)
-        : p_msg_(pMsg),
-          size_(size) {
-    }
-
     /**
      * Method for packing std::set in buffer
      * @tparam K Type of std::set
@@ -411,10 +387,10 @@ namespace Buffers {
     bool put(const std::set<K> & mp) {
       bool result = false;
       if (mp.size() > 0) {
-        if (DelegatePackBuffer<decltype(mp.size())>(p_msg_, size_).put(mp.size()) &&
+        if (DelegatePackBuffer<decltype(mp.size())>{p_msg_, size_}.put(mp.size()) &&
             mp.size() <= size_) {
           for (auto& ve : mp) {
-            DelegatePackBuffer<K>(p_msg_, size_).put(ve);
+            DelegatePackBuffer<K>{p_msg_, size_}.put(ve);
           }
           result = true;
         }
@@ -435,16 +411,11 @@ namespace Buffers {
    */
   template <typename K, typename V>
   class PackBuffer::DelegatePackBuffer<std::pair<K, V>> {
-   private:
+   public:
     uint8_t *& p_msg_;
     size_t & size_;
 
    public:
-    DelegatePackBuffer(uint8_t *& pMsg, size_t & size)
-        : p_msg_(pMsg),
-          size_(size) {
-    }
-
     /**
      * Method for packing std::map in buffer
      * @tparam K Key of std::map
@@ -453,8 +424,8 @@ namespace Buffers {
      * @return Return true if packing is succeed, false otherwise
      */
     bool put(const std::pair<K, V> & pr) {
-      DelegatePackBuffer<K>(p_msg_, size_).put(pr.first);
-      DelegatePackBuffer<V>(p_msg_, size_).put(pr.second);
+      DelegatePackBuffer<K>{p_msg_, size_}.put(pr.first);
+      DelegatePackBuffer<V>{p_msg_, size_}.put(pr.second);
       return true;
     }
 
@@ -471,16 +442,11 @@ namespace Buffers {
    */
   template <typename K, typename V>
   class PackBuffer::DelegatePackBuffer<std::map<K, V>> {
-   private:
+   public:
     uint8_t *& p_msg_;
     size_t & size_;
 
    public:
-    DelegatePackBuffer(uint8_t *& pMsg, size_t & size)
-        : p_msg_(pMsg),
-          size_(size) {
-    }
-
     /**
      * Method for packing std::map in buffer
      * @tparam K Key of std::map
@@ -491,11 +457,11 @@ namespace Buffers {
     bool put(const std::map<K, V> & mp) {
       bool result = false;
       if (mp.size() > 0) {
-        if (DelegatePackBuffer<decltype(mp.size())>(p_msg_, size_).put(mp.size()) &&
+        if (DelegatePackBuffer<decltype(mp.size())>{p_msg_, size_}.put(mp.size()) &&
             mp.size() <= size_) {
           for (auto& ve : mp) {
-            DelegatePackBuffer<K>(p_msg_, size_).put(ve.first);
-            DelegatePackBuffer<V>(p_msg_, size_).put(ve.second);
+            DelegatePackBuffer<K>{p_msg_, size_}.put(ve.first);
+            DelegatePackBuffer<V>{p_msg_, size_}.put(ve.second);
           }
           result = true;
         }
@@ -515,16 +481,11 @@ namespace Buffers {
    */
   template <typename K>
   class PackBuffer::DelegatePackBuffer<std::unordered_set<K>> {
-   private:
+   public:
     uint8_t *& p_msg_;
     size_t & size_;
 
    public:
-    DelegatePackBuffer(uint8_t *& pMsg, size_t & size)
-        : p_msg_(pMsg),
-          size_(size) {
-    }
-
     /**
      * Method for packing std::unordered_set in buffer
      * @tparam K Type of std::unordered_set
@@ -534,10 +495,10 @@ namespace Buffers {
     bool put(const std::unordered_set<K> & mp) {
       bool result = false;
       if (mp.size() > 0) {
-        if (DelegatePackBuffer<decltype(mp.size())>(p_msg_, size_).put(mp.size()) &&
+        if (DelegatePackBuffer<decltype(mp.size())>{p_msg_, size_}.put(mp.size()) &&
             mp.size() <= size_) {
           for (auto& ve : mp) {
-            DelegatePackBuffer<K>(p_msg_, size_).put(ve);
+            DelegatePackBuffer<K>{p_msg_, size_}.put(ve);
           }
           result = true;
         }
@@ -558,16 +519,11 @@ namespace Buffers {
    */
   template <typename K, typename V>
   class PackBuffer::DelegatePackBuffer<std::unordered_map<K, V>> {
-   private:
+   public:
     uint8_t *& p_msg_;
     size_t & size_;
 
    public:
-    DelegatePackBuffer(uint8_t *& pMsg, size_t & size)
-        : p_msg_(pMsg),
-          size_(size) {
-    }
-
     /**
      * Method for packing std::unordered_map in buffer
      * @tparam K Key of std::unordered_map
@@ -578,11 +534,11 @@ namespace Buffers {
     bool put(const std::unordered_map<K, V> & mp) {
       bool result = false;
       if (mp.size() > 0) {
-        if (DelegatePackBuffer<decltype(mp.size())>(p_msg_, size_).put(mp.size()) &&
+        if (DelegatePackBuffer<decltype(mp.size())>{p_msg_, size_}.put(mp.size()) &&
             mp.size() <= size_) {
           for (auto& ve : mp) {
-            DelegatePackBuffer<K>(p_msg_, size_).put(ve.first);
-            DelegatePackBuffer<V>(p_msg_, size_).put(ve.second);
+            DelegatePackBuffer<K>{p_msg_, size_}.put(ve.first);
+            DelegatePackBuffer<V>{p_msg_, size_}.put(ve.second);
           }
           result = true;
         }
