@@ -26,7 +26,7 @@ namespace Buffers {
    * Pack buffer class
    */
   class PackBuffer {
-   private:
+   public:
     /**
      * Forward declaration of real delegate pack buffer
      * @tparam T Type for packing

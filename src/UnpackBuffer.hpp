@@ -23,7 +23,7 @@ namespace Buffers {
    * Unpack buffer class
    */
   class UnpackBuffer {
-   private:
+   public:
     /**
      * Class which UnpackBuffer delegate real unpacking of data
      * @tparam T Data to unpack

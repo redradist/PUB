@@ -9,10 +9,10 @@ set(SOURCE_FILES    main.cpp
         src/UnpackBuffer.hpp
         src/StackPackBuffer.hpp
         src/HeapPackBuffer.hpp
-                    tests/CyclicBufferTests.cpp
-                    tests/HeapPackBufferTests.cpp
-                    tests/StackPackBufferTests.cpp
-                    tests/UnpackBufferTests.cpp)
+        tests/CyclicBufferTests.cpp
+        tests/HeapPackBufferTests.cpp
+        tests/StackPackBufferTests.cpp
+        tests/UnpackBufferTests.cpp)
 
 ################################
 # GTest
