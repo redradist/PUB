@@ -36,8 +36,8 @@ class PackBuffer::DelegatePackBuffer<SuperPuperClass> {
   template <typename TBufferContext>
   bool put(TBufferContext _ctx, const SuperPuperClass & _type) {
     bool result = false;
-    if (DelegatePackBuffer<decltype(_type.a)>{}.put(_ctx, _type.a) &&
-        DelegatePackBuffer<decltype(_type.k)>{}.put(_ctx, _type.k)) {
+    if (DelegatePackBuffer<decltype(_type.a)>::put(_ctx, _type.a) &&
+        DelegatePackBuffer<decltype(_type.k)>::put(_ctx, _type.k)) {
       result = true;
     }
     return result;
@@ -59,8 +59,8 @@ class UnpackBuffer::DelegateUnpackBuffer<SuperPuperClass> {
   template <typename TBufferContext>
   SuperPuperClass get(TBufferContext _ctx) {
     SuperPuperClass result;
-    result.a = DelegateUnpackBuffer<decltype(result.a)>().get(_ctx);
-    result.k = DelegateUnpackBuffer<decltype(result.k)>().get(_ctx);
+    result.a = DelegateUnpackBuffer<decltype(result.a)>::get(_ctx);
+    result.k = DelegateUnpackBuffer<decltype(result.k)>::get(_ctx);
     return std::move(result);
   }
 };
