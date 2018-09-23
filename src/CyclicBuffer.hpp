@@ -9,6 +9,7 @@
 #ifndef BUFFERS_CYCLICBUFFER_HPP
 #define BUFFERS_CYCLICBUFFER_HPP
 
+#include <stdint.h>
 #include <cassert>
 #include <algorithm>
 
