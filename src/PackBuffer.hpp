@@ -41,6 +41,12 @@ namespace Buffers {
         return *this;
       }
 
+      PackBufferContext & operator -=(const size_t & _size) {
+        p_msg_ -= _size;
+        size_ += _size;
+        return *this;
+      }
+
       uint8_t * data() {
         return p_msg_;
       }

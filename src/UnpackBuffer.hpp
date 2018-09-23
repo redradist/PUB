@@ -37,6 +37,11 @@ namespace Buffers {
         return *this;
       }
 
+      UnpackBufferContext & operator -=(const size_t & _size) {
+        p_pos_ -= _size;
+        return *this;
+      }
+
       uint8_t const * data() {
         return p_pos_;
       }
