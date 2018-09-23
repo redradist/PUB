@@ -23,7 +23,7 @@ namespace Buffers {
    * Unpack buffer class
    */
   class UnpackBuffer {
-   private:
+   public:
     /**
      * Class that is responsible for holding current UnpackBuffer context:
      *     next position in the message to unpack

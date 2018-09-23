@@ -26,7 +26,7 @@ namespace Buffers {
    * Pack buffer class
    */
   class PackBuffer {
-   private:
+   public:
     /**
      * Class that is responsible for holding current PackBuffer context:
      *     next position in the message, size of left message space
