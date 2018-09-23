@@ -25,15 +25,46 @@ namespace Buffers {
   class UnpackBuffer {
    private:
     /**
+     * Class that is responsible for holding current UnpackBuffer context:
+     *     next position in the message to unpack
+     */
+    class UnpackBufferContext {
+     public:
+      friend class UnpackBuffer;
+
+      UnpackBufferContext & operator +=(const size_t & _size) {
+        p_pos_ += _size;
+        return *this;
+      }
+
+      UnpackBufferContext & operator -=(const size_t & _size) {
+        p_pos_ -= _size;
+        return *this;
+      }
+
+      uint8_t const * data() {
+        return p_pos_;
+      }
+
+     private:
+      UnpackBufferContext(uint8_t const *& _pPos)
+          : p_pos_{_pPos} {
+      }
+
+      uint8_t const *& p_pos_;
+    };
+
+    /**
      * Class which UnpackBuffer delegate real unpacking of data
      * @tparam T Data to unpack
      */
     template <typename T>
     class DelegateUnpackBuffer {
      public:
-      T get(uint8_t const *& p_pos_) {
-        const T &t = *(reinterpret_cast<const T *>(p_pos_));
-        p_pos_ += sizeof(T);
+      template <typename TBufferContext>
+      T get(TBufferContext _ctx) {
+        const T &t = *(reinterpret_cast<const T *>(_ctx.data()));
+        _ctx += sizeof(T);
         return std::move(t);
       }
     };
@@ -56,7 +87,7 @@ namespace Buffers {
     template<typename T>
     T get() {
       auto unpacker = DelegateUnpackBuffer<T>();
-      return unpacker.get(p_pos_);
+      return unpacker.get(UnpackBufferContext{p_pos_});
     }
 
     const char *get() {
@@ -89,9 +120,10 @@ namespace Buffers {
      * Specialization for null-terminated string
      * @return Null-terminated string
      */
-    const char *get(uint8_t const *& p_pos_) {
-      const char *t = reinterpret_cast<const char *>(p_pos_);
-      p_pos_ += std::strlen(t) + 1;
+    template <typename TBufferContext>
+    const char *get(TBufferContext _ctx) {
+      const char *t = reinterpret_cast<const char *>(_ctx.data());
+      _ctx += std::strlen(t) + 1;
       return t;
     }
   };
@@ -99,8 +131,9 @@ namespace Buffers {
   template<>
   class UnpackBuffer::DelegateUnpackBuffer<std::string> {
    public:
-    std::string get(uint8_t const *& p_pos_) {
-      std::string result = DelegateUnpackBuffer<const char*>().get(p_pos_);
+    template <typename TBufferContext>
+    std::string get(TBufferContext _ctx) {
+      std::string result = DelegateUnpackBuffer<const char*>().get(_ctx);
       return std::move(result);
     }
   };
@@ -108,11 +141,12 @@ namespace Buffers {
   template<typename T>
   class UnpackBuffer::DelegateUnpackBuffer<std::vector<T>> {
    public:
-    std::vector<T> get(uint8_t const *& p_pos_) {
+    template <typename TBufferContext>
+    std::vector<T> get(TBufferContext _ctx) {
       std::vector<T> result;
-      auto size = DelegateUnpackBuffer< typename std::vector<T>::size_type >().get(p_pos_);
+      auto size = DelegateUnpackBuffer< typename std::vector<T>::size_type >().get(_ctx);
       for (int i = 0; i < size; ++i) {
-        result.push_back(DelegateUnpackBuffer<T>().get(p_pos_));
+        result.push_back(DelegateUnpackBuffer<T>().get(_ctx));
       }
       return std::move(result);
     }
@@ -121,11 +155,12 @@ namespace Buffers {
   template<typename T>
   class UnpackBuffer::DelegateUnpackBuffer<std::list<T>> {
    public:
-    std::list<T> get(uint8_t const *& p_pos_) {
+    template <typename TBufferContext>
+    std::list<T> get(TBufferContext _ctx) {
       std::list<T> result;
-      auto size = DelegateUnpackBuffer< typename std::vector<T>::size_type >().get(p_pos_);
+      auto size = DelegateUnpackBuffer< typename std::vector<T>::size_type >().get(_ctx);
       for (int i = 0; i < size; ++i) {
-        result.push_back(DelegateUnpackBuffer<T>().get(p_pos_));
+        result.push_back(DelegateUnpackBuffer<T>().get(_ctx));
       }
       return std::move(result);
     }
@@ -134,11 +169,12 @@ namespace Buffers {
   template<typename K>
   class UnpackBuffer::DelegateUnpackBuffer<std::set<K>> {
    public:
-    std::set<K> get(uint8_t const *& p_pos_) {
+    template <typename TBufferContext>
+    std::set<K> get(TBufferContext _ctx) {
       std::set<K> result;
-      auto size = DelegateUnpackBuffer< typename std::set<K>::size_type >().get(p_pos_);
+      auto size = DelegateUnpackBuffer< typename std::set<K>::size_type >().get(_ctx);
       for (int i = 0; i < size; ++i) {
-        auto key = DelegateUnpackBuffer<K>().get(p_pos_);
+        auto key = DelegateUnpackBuffer<K>().get(_ctx);
         result.insert(key);
       }
       return std::move(result);
@@ -148,10 +184,11 @@ namespace Buffers {
   template<typename K, typename V>
   class UnpackBuffer::DelegateUnpackBuffer<std::pair<K, V>> {
    public:
-    std::pair<K, V> get(uint8_t const *& p_pos_) {
+    template <typename TBufferContext>
+    std::pair<K, V> get(TBufferContext _ctx) {
       std::pair<K, V> result;
-      result.first = DelegateUnpackBuffer<K>().get(p_pos_);
-      result.second = DelegateUnpackBuffer<V>().get(p_pos_);
+      result.first = DelegateUnpackBuffer<K>().get(_ctx);
+      result.second = DelegateUnpackBuffer<V>().get(_ctx);
       return std::move(result);
     }
   };
@@ -159,12 +196,13 @@ namespace Buffers {
   template<typename K, typename V>
   class UnpackBuffer::DelegateUnpackBuffer<std::map<K, V>> {
    public:
-    std::map<K, V> get(uint8_t const *& p_pos_) {
+    template <typename TBufferContext>
+    std::map<K, V> get(TBufferContext _ctx) {
       std::map<K, V> result;
-      auto size = DelegateUnpackBuffer< typename std::map<K, V>::size_type >().get(p_pos_);
+      auto size = DelegateUnpackBuffer< typename std::map<K, V>::size_type >().get(_ctx);
       for (int i = 0; i < size; ++i) {
-        auto key = DelegateUnpackBuffer<K>().get(p_pos_);
-        auto value = DelegateUnpackBuffer<V>().get(p_pos_);
+        auto key = DelegateUnpackBuffer<K>().get(_ctx);
+        auto value = DelegateUnpackBuffer<V>().get(_ctx);
         result[key] = value;
       }
       return std::move(result);
@@ -174,11 +212,12 @@ namespace Buffers {
   template<typename K>
   class UnpackBuffer::DelegateUnpackBuffer<std::unordered_set<K>> {
    public:
-    std::unordered_set<K> get(uint8_t const *& p_pos_) {
+    template <typename TBufferContext>
+    std::unordered_set<K> get(TBufferContext _ctx) {
       std::unordered_set<K> result;
-      auto size = DelegateUnpackBuffer< typename std::unordered_set<K>::size_type >().get(p_pos_);
+      auto size = DelegateUnpackBuffer< typename std::unordered_set<K>::size_type >().get(_ctx);
       for (int i = 0; i < size; ++i) {
-        auto key = DelegateUnpackBuffer<K>().get(p_pos_);
+        auto key = DelegateUnpackBuffer<K>().get(_ctx);
         result.insert(key);
       }
       return std::move(result);
@@ -188,12 +227,13 @@ namespace Buffers {
   template<typename K, typename V>
   class UnpackBuffer::DelegateUnpackBuffer<std::unordered_map<K, V>> {
    public:
-    std::unordered_map<K, V> get(uint8_t const *& p_pos_) {
+    template <typename TBufferContext>
+    std::unordered_map<K, V> get(TBufferContext _ctx) {
       std::unordered_map<K, V> result;
-      auto size = DelegateUnpackBuffer< typename std::unordered_map<K, V>::size_type >().get(p_pos_);
+      auto size = DelegateUnpackBuffer< typename std::unordered_map<K, V>::size_type >().get(_ctx);
       for (int i = 0; i < size; ++i) {
-        auto key = DelegateUnpackBuffer<K>().get(p_pos_);
-        auto value = DelegateUnpackBuffer<V>().get(p_pos_);
+        auto key = DelegateUnpackBuffer<K>().get(_ctx);
+        auto value = DelegateUnpackBuffer<V>().get(_ctx);
         result[key] = value;
       }
       return std::move(result);

@@ -28,6 +28,44 @@ namespace Buffers {
   class PackBuffer {
    private:
     /**
+     * Class that is responsible for holding current PackBuffer context:
+     *     next position in the message, size of left message space
+     */
+    class PackBufferContext {
+     public:
+      friend class PackBuffer;
+
+      PackBufferContext & operator +=(const size_t & _size) {
+        p_msg_ += _size;
+        size_ -= _size;
+        return *this;
+      }
+
+      PackBufferContext & operator -=(const size_t & _size) {
+        p_msg_ -= _size;
+        size_ += _size;
+        return *this;
+      }
+
+      uint8_t * data() {
+        return p_msg_;
+      }
+
+      size_t size() {
+        return size_;
+      }
+
+     private:
+      PackBufferContext(uint8_t *& _pMsg, size_t & _size)
+        : p_msg_{_pMsg}
+        , size_{_size} {
+      }
+
+      uint8_t *& p_msg_;
+      size_t & size_;
+    };
+
+    /**
      * Forward declaration of real delegate pack buffer
      * @tparam T Type for packing
      */
@@ -61,12 +99,8 @@ namespace Buffers {
                           >::type;
       auto pMsg = p_msg_ + data_size_;
       auto size = kSize_ - data_size_;
-      auto packer = DelegatePackBuffer<GeneralType>{pMsg, size};
-#if __cplusplus > 199711L
-      static_assert(std::is_same<decltype(packer.p_msg_), uint8_t *&>::value , "Is not uint8_t *&");
-      static_assert(std::is_same<decltype(packer.size_), size_t &>::value , "Is not size_t &");
-#endif
-      bool result = packer.put(std::forward<T>(t));
+      auto packer = DelegatePackBuffer<GeneralType>{};
+      bool result = packer.put(PackBufferContext{pMsg, size}, std::forward<T>(t));
       data_size_ = kSize_ - size;
       return result;
     }
@@ -75,12 +109,8 @@ namespace Buffers {
     bool put(const T t[dataLen]) {
       auto pMsg = p_msg_ + data_size_;
       auto size = kSize_ - data_size_;
-      auto packer = DelegatePackBuffer<T>{pMsg, size};
-#if __cplusplus > 199711L
-      static_assert(std::is_same<decltype(packer.p_msg_), uint8_t *&>::value , "Is not uint8_t *&");
-      static_assert(std::is_same<decltype(packer.size_), size_t &>::value , "Is not size_t &");
-#endif
-      bool result = packer.put(t);
+      auto packer = DelegatePackBuffer<T>{};
+      bool result = packer.put(PackBufferContext{pMsg, size}, t);
       data_size_ = kSize_ - size;
       return result;
     }
@@ -89,12 +119,8 @@ namespace Buffers {
     bool put(T * t, size_t dataLen) {
       auto pMsg = p_msg_ + data_size_;
       auto size = kSize_ - data_size_;
-      auto packer = DelegatePackBuffer<T>{pMsg, size};
-#if __cplusplus > 199711L
-      static_assert(std::is_same<decltype(packer.p_msg_), uint8_t *&>::value , "Is not uint8_t *&");
-      static_assert(std::is_same<decltype(packer.size_), size_t &>::value , "Is not size_t &");
-#endif
-      bool result = packer.put(t, dataLen);
+      auto packer = DelegatePackBuffer<T>{};
+      bool result = packer.put(PackBufferContext{pMsg, size}, t, dataLen);
       data_size_ = kSize_ - size;
       return result;
     }
@@ -159,24 +185,19 @@ namespace Buffers {
 #endif
 
    public:
-    uint8_t *& p_msg_;
-    size_t & size_;
-
-   public:
     /**
      * Method for packing in buffer constant or temporary data
      * @tparam T Type of packing data
      * @param t Data for packing
      * @return Return true if packing is succeed, false otherwise
      */
-    bool put(const T & t) {
+    template <typename TBufferContext>
+    bool put(TBufferContext _ctx, const T & t) {
       bool result = false;
-      if (sizeof(T) <= size_) {
+      if (sizeof(T) <= _ctx.size()) {
         const uint8_t *p_start_ = reinterpret_cast<const uint8_t *>(&t);
-        std::copy(p_start_, p_start_ + sizeof(T), p_msg_);
-        size_t writtenSize = sizeof(T);
-        p_msg_ += writtenSize;
-        size_ -= writtenSize;
+        std::copy(p_start_, p_start_ + sizeof(T), _ctx.data());
+        _ctx += sizeof(T);
         result = true;
       }
       return result;
@@ -188,16 +209,14 @@ namespace Buffers {
      * @param t Array to packing data
      * @return Return true if packing is succeed, false otherwise
      */
-    template <size_t dataLen>
-    bool put(const T t[dataLen]) {
+    template <typename TBufferContext, size_t dataLen>
+    bool put(TBufferContext _ctx, const T t[dataLen]) {
       bool result = false;
-      if (t && (sizeof(dataLen) + sizeof(T) * dataLen) <= size_) {
-        if (DelegatePackBuffer<decltype(dataLen)>{p_msg_, size_}.put(dataLen)) {
+      if (t && (sizeof(dataLen) + sizeof(T) * dataLen) <= _ctx.size()) {
+        if (DelegatePackBuffer<decltype(dataLen)>{}.put(_ctx, dataLen)) {
           const uint8_t *p_start_ = reinterpret_cast<const uint8_t *>(t);
-          std::copy(p_start_, p_start_ + sizeof(T) * dataLen, p_msg_);
-          size_t writtenSize = sizeof(T) * dataLen;
-          p_msg_ += writtenSize;
-          size_ -= writtenSize;
+          std::copy(p_start_, p_start_ + sizeof(T) * dataLen, _ctx.data());
+          _ctx += sizeof(T) * dataLen;
           result = true;
         }
       }
@@ -211,15 +230,14 @@ namespace Buffers {
      * @param dataLen Length of data to be stored
      * @return Return true if packing is succeed, false otherwise
      */
-    bool put(T * t, size_t dataLen) {
+    template <typename TBufferContext>
+    bool put(TBufferContext _ctx, T * t, size_t dataLen) {
       bool result = false;
-      if (t && (sizeof(dataLen) + sizeof(T) * dataLen) <= size_) {
-        if (DelegatePackBuffer<decltype(dataLen)>{p_msg_, size_}.put(dataLen)) {
+      if (t && (sizeof(dataLen) + sizeof(T) * dataLen) <= _ctx.size()) {
+        if (DelegatePackBuffer<decltype(dataLen)>{}.put(_ctx, dataLen)) {
           const uint8_t *p_start_ = reinterpret_cast<const uint8_t *>(t);
-          std::copy(p_start_, p_start_ + sizeof(T) * dataLen, p_msg_);
-          size_t writtenSize = sizeof(T) * dataLen;
-          p_msg_ += writtenSize;
-          size_ -= writtenSize;
+          std::copy(p_start_, p_start_ + sizeof(T) * dataLen, _ctx.data());
+          _ctx += sizeof(T) * dataLen;
           result = true;
         }
       }
@@ -233,24 +251,20 @@ namespace Buffers {
   template <>
   class PackBuffer::DelegatePackBuffer<char*> {
    public:
-    uint8_t *& p_msg_;
-    size_t & size_;
-
-   public:
     /**
      * Specialization for const null-terminated string
      * @param str Null-terminated string
      * @return Return true if packing is succeed, false otherwise
      */
-    bool put(const char *str) {
+    template <typename TBufferContext>
+    bool put(TBufferContext _ctx, const char *str) {
       bool result = false;
       if (str) {
         int kCStringLen = std::strlen(str) + 1;
-        if (kCStringLen <= size_) {
+        if (kCStringLen <= _ctx.size()) {
           const uint8_t *p_start_ = reinterpret_cast<const uint8_t *>(str);
-          std::copy(p_start_, p_start_ + kCStringLen, p_msg_);
-          p_msg_ += kCStringLen;
-          size_ -= kCStringLen;
+          std::copy(p_start_, p_start_ + kCStringLen, _ctx.data());
+          _ctx += kCStringLen;
           result = true;
         }
       }
@@ -262,8 +276,9 @@ namespace Buffers {
      * @param str Null-terminated string
      * @return Return true if packing is succeed, false otherwise
      */
-    bool put(char *str) {
-      return this->put(static_cast<const char *>(str));
+    template <typename TBufferContext>
+    bool put(TBufferContext _ctx, char *str) {
+      return this->put(_ctx, static_cast<const char *>(str));
     }
   };
 
@@ -273,23 +288,19 @@ namespace Buffers {
   template <>
   class PackBuffer::DelegatePackBuffer<std::string> {
    public:
-    uint8_t *& p_msg_;
-    size_t & size_;
-
-   public:
     /**
      * Method for packing in buffer constant or temporary standard string
      * @param str String for packing
      * @return Return true if packing is succeed, false otherwise
      */
-    bool put(const std::string &str) {
+    template <typename TBufferContext>
+    bool put(TBufferContext _ctx, const std::string &str) {
       bool result = false;
       int kCStringLen = str.size() + 1;
-      if (kCStringLen <= size_) {
+      if (kCStringLen <= _ctx.size()) {
         const uint8_t *p_start_ = reinterpret_cast<const uint8_t *>(str.c_str());
-        std::copy(p_start_, p_start_ + kCStringLen, p_msg_);
-        p_msg_ += kCStringLen;
-        size_ -= kCStringLen;
+        std::copy(p_start_, p_start_ + kCStringLen, _ctx.data());
+        _ctx += kCStringLen;
         result = true;
       }
       return result;
@@ -300,8 +311,9 @@ namespace Buffers {
      * @param str String for packing
      * @return Return true if packing is succeed, false otherwise
      */
-    bool put(std::string &str) {
-      return this->put(static_cast<const std::string &>(str));
+    template <typename TBufferContext>
+    bool put(TBufferContext _ctx, std::string &str) {
+      return this->put(_ctx, static_cast<const std::string &>(str));
     }
   };
 
@@ -312,24 +324,20 @@ namespace Buffers {
   template <typename T>
   class PackBuffer::DelegatePackBuffer<std::vector<T>> {
    public:
-    uint8_t *& p_msg_;
-    size_t & size_;
-
-   public:
     /**
      * Method for packing std::vector in buffer
      * @tparam T Type of std::vector
      * @param vec std::vector for packing
      * @return Return true if packing is succeed, false otherwise
      */
-    bool put(const std::vector<T> & vec) {
+    template <typename TBufferContext>
+    bool put(TBufferContext _ctx, const std::vector<T> & vec) {
       bool result = false;
       if (vec.size() > 0) {
-        if (DelegatePackBuffer<decltype(vec.size())>{p_msg_, size_}.put(vec.size()) &&
-            vec.size() <= size_) {
-          std::copy(vec.data(), vec.data() + vec.size(), (T*)(p_msg_));
-          p_msg_ += vec.size() * sizeof(T);
-          size_ -= vec.size() * sizeof(T);
+        if (DelegatePackBuffer<decltype(vec.size())>{}.put(_ctx, vec.size()) &&
+            vec.size() <= _ctx.size()) {
+          std::copy(vec.data(), vec.data() + vec.size(), (T*)(_ctx.data()));
+          _ctx += vec.size() * sizeof(T);
           result = true;
         }
       }
@@ -342,15 +350,14 @@ namespace Buffers {
      * @param vec rvalue std::vector for packing
      * @return Return true if packing is succeed, false otherwise
      */
-    bool put(std::vector<T> && vec) {
+    template <typename TBufferContext>
+    bool put(TBufferContext _ctx, std::vector<T> && vec) {
       bool result = false;
       if (vec.size() > 0) {
-        if (DelegatePackBuffer<decltype(vec.size())>{p_msg_, size_}.put(vec.size()) &&
-            vec.size() <= size_) {
-          std::move(vec.data(), vec.data() + vec.size(), (T*)(p_msg_));
-          size_t writtenSize = vec.size() * sizeof(T);
-          p_msg_ += writtenSize;
-          size_ -= writtenSize;
+        if (DelegatePackBuffer<decltype(vec.size())>{}.put(_ctx, vec.size()) &&
+            vec.size() <= _ctx.size()) {
+          std::move(vec.data(), vec.data() + vec.size(), (T*)(_ctx.data()));
+          _ctx += vec.size() * sizeof(T);
           result = true;
         }
       }
@@ -365,23 +372,20 @@ namespace Buffers {
   template <typename T>
   class PackBuffer::DelegatePackBuffer<std::list<T>> {
    public:
-    uint8_t *& p_msg_;
-    size_t & size_;
-
-   public:
     /**
      * Method for packing std::list in buffer
      * @tparam T Type of std::list
      * @param lst std::list for packing
      * @return Return true if packing is succeed, false otherwise
      */
-    bool put(const std::list<T> & lst) {
+    template <typename TBufferContext>
+    bool put(TBufferContext _ctx, const std::list<T> & lst) {
       bool result = false;
       if (lst.size() > 0) {
-        if (DelegatePackBuffer<decltype(lst.size())>{p_msg_, size_}.put(lst.size()) &&
-            lst.size() <= size_) {
+        if (DelegatePackBuffer<decltype(lst.size())>{}.put(_ctx, lst.size()) &&
+            lst.size() <= _ctx.size()) {
           for (auto ve : lst) {
-            DelegatePackBuffer<T>{p_msg_, size_}.put(ve);
+            DelegatePackBuffer<T>{}.put(_ctx, ve);
           }
           result = true;
         }
@@ -402,23 +406,20 @@ namespace Buffers {
   template <typename K>
   class PackBuffer::DelegatePackBuffer<std::set<K>> {
    public:
-    uint8_t *& p_msg_;
-    size_t & size_;
-
-   public:
     /**
      * Method for packing std::set in buffer
      * @tparam K Type of std::set
      * @param mp std::set for packing
      * @return Return true if packing is succeed, false otherwise
      */
-    bool put(const std::set<K> & mp) {
+    template <typename TBufferContext>
+    bool put(TBufferContext _ctx, const std::set<K> & mp) {
       bool result = false;
       if (mp.size() > 0) {
-        if (DelegatePackBuffer<decltype(mp.size())>{p_msg_, size_}.put(mp.size()) &&
-            mp.size() <= size_) {
+        if (DelegatePackBuffer<decltype(mp.size())>{}.put(_ctx, mp.size()) &&
+            mp.size() <= _ctx.size()) {
           for (auto& ve : mp) {
-            DelegatePackBuffer<K>{p_msg_, size_}.put(ve);
+            DelegatePackBuffer<K>{}.put(_ctx, ve);
           }
           result = true;
         }
@@ -440,10 +441,6 @@ namespace Buffers {
   template <typename K, typename V>
   class PackBuffer::DelegatePackBuffer<std::pair<K, V>> {
    public:
-    uint8_t *& p_msg_;
-    size_t & size_;
-
-   public:
     /**
      * Method for packing std::map in buffer
      * @tparam K Key of std::map
@@ -451,9 +448,10 @@ namespace Buffers {
      * @param mp std::map for packing
      * @return Return true if packing is succeed, false otherwise
      */
-    bool put(const std::pair<K, V> & pr) {
-      DelegatePackBuffer<K>{p_msg_, size_}.put(pr.first);
-      DelegatePackBuffer<V>{p_msg_, size_}.put(pr.second);
+    template <typename TBufferContext>
+    bool put(TBufferContext _ctx, const std::pair<K, V> & pr) {
+      DelegatePackBuffer<K>{}.put(_ctx, pr.first);
+      DelegatePackBuffer<V>{}.put(_ctx, pr.second);
       return true;
     }
 
@@ -471,10 +469,6 @@ namespace Buffers {
   template <typename K, typename V>
   class PackBuffer::DelegatePackBuffer<std::map<K, V>> {
    public:
-    uint8_t *& p_msg_;
-    size_t & size_;
-
-   public:
     /**
      * Method for packing std::map in buffer
      * @tparam K Key of std::map
@@ -482,14 +476,15 @@ namespace Buffers {
      * @param mp std::map for packing
      * @return Return true if packing is succeed, false otherwise
      */
-    bool put(const std::map<K, V> & mp) {
+    template <typename TBufferContext>
+    bool put(TBufferContext _ctx, const std::map<K, V> & mp) {
       bool result = false;
       if (mp.size() > 0) {
-        if (DelegatePackBuffer<decltype(mp.size())>{p_msg_, size_}.put(mp.size()) &&
-            mp.size() <= size_) {
+        if (DelegatePackBuffer<decltype(mp.size())>{}.put(_ctx, mp.size()) &&
+            mp.size() <= _ctx.size()) {
           for (auto& ve : mp) {
-            DelegatePackBuffer<K>{p_msg_, size_}.put(ve.first);
-            DelegatePackBuffer<V>{p_msg_, size_}.put(ve.second);
+            DelegatePackBuffer<K>{}.put(_ctx, ve.first);
+            DelegatePackBuffer<V>{}.put(_ctx, ve.second);
           }
           result = true;
         }
@@ -510,23 +505,20 @@ namespace Buffers {
   template <typename K>
   class PackBuffer::DelegatePackBuffer<std::unordered_set<K>> {
    public:
-    uint8_t *& p_msg_;
-    size_t & size_;
-
-   public:
     /**
      * Method for packing std::unordered_set in buffer
      * @tparam K Type of std::unordered_set
      * @param mp std::unordered_set for packing
      * @return Return true if packing is succeed, false otherwise
      */
-    bool put(const std::unordered_set<K> & mp) {
+    template <typename TBufferContext>
+    bool put(TBufferContext _ctx, const std::unordered_set<K> & mp) {
       bool result = false;
       if (mp.size() > 0) {
-        if (DelegatePackBuffer<decltype(mp.size())>{p_msg_, size_}.put(mp.size()) &&
-            mp.size() <= size_) {
+        if (DelegatePackBuffer<decltype(mp.size())>{}.put(_ctx, mp.size()) &&
+            mp.size() <= _ctx.size()) {
           for (auto& ve : mp) {
-            DelegatePackBuffer<K>{p_msg_, size_}.put(ve);
+            DelegatePackBuffer<K>{}.put(_ctx, ve);
           }
           result = true;
         }
@@ -548,10 +540,6 @@ namespace Buffers {
   template <typename K, typename V>
   class PackBuffer::DelegatePackBuffer<std::unordered_map<K, V>> {
    public:
-    uint8_t *& p_msg_;
-    size_t & size_;
-
-   public:
     /**
      * Method for packing std::unordered_map in buffer
      * @tparam K Key of std::unordered_map
@@ -559,14 +547,15 @@ namespace Buffers {
      * @param mp std::unordered_map for packing
      * @return Return true if packing is succeed, false otherwise
      */
-    bool put(const std::unordered_map<K, V> & mp) {
+    template <typename TBufferContext>
+    bool put(TBufferContext _ctx, const std::unordered_map<K, V> & mp) {
       bool result = false;
       if (mp.size() > 0) {
-        if (DelegatePackBuffer<decltype(mp.size())>{p_msg_, size_}.put(mp.size()) &&
-            mp.size() <= size_) {
+        if (DelegatePackBuffer<decltype(mp.size())>{}.put(_ctx, mp.size()) &&
+            mp.size() <= _ctx.size()) {
           for (auto& ve : mp) {
-            DelegatePackBuffer<K>{p_msg_, size_}.put(ve.first);
-            DelegatePackBuffer<V>{p_msg_, size_}.put(ve.second);
+            DelegatePackBuffer<K>{}.put(_ctx, ve.first);
+            DelegatePackBuffer<V>{}.put(_ctx, ve.second);
           }
           result = true;
         }
