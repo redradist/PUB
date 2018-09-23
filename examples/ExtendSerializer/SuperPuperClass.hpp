@@ -26,19 +26,18 @@ namespace Buffers {
 template <>
 class PackBuffer::DelegatePackBuffer<SuperPuperClass> {
  public:
-  uint8_t *& p_msg_;
-  size_t & size_;
-
- public:
   /**
-   *
-   * @param _type
-   * @return
+   * Method for serialization of user-defined data
+   * @tparam TBufferContext Class that represent current context of PackBuffer
+   * @param _ctx Instance of PackBuffer context
+   * @param _type Object to put in PackBuffer
+   * @return true if successfully, false - otherwise
    */
-  bool put(const SuperPuperClass & _type) {
+  template <typename TBufferContext>
+  bool put(TBufferContext _ctx, const SuperPuperClass & _type) {
     bool result = false;
-    if (DelegatePackBuffer<decltype(_type.a)>{p_msg_, size_}.put(_type.a) &&
-        DelegatePackBuffer<decltype(_type.k)>{p_msg_, size_}.put(_type.k)) {
+    if (DelegatePackBuffer<decltype(_type.a)>{}.put(_ctx, _type.a) &&
+        DelegatePackBuffer<decltype(_type.k)>{}.put(_ctx, _type.k)) {
       result = true;
     }
     return result;
@@ -51,10 +50,17 @@ class PackBuffer::DelegatePackBuffer<SuperPuperClass> {
 template <>
 class UnpackBuffer::DelegateUnpackBuffer<SuperPuperClass> {
  public:
-  SuperPuperClass get(uint8_t const *& p_pos_) {
+  /**
+   * Method for deserialization of user-defined data
+   * @tparam TBufferContext Class that represent current context of UnpackBuffer
+   * @param _ctx Instance of UnpackBuffer context
+   * @return Instance of deserialized class
+   */
+  template <typename TBufferContext>
+  SuperPuperClass get(TBufferContext _ctx) {
     SuperPuperClass result;
-    result.a = DelegateUnpackBuffer<decltype(result.a)>().get(p_pos_);
-    result.k = DelegateUnpackBuffer<decltype(result.k)>().get(p_pos_);
+    result.a = DelegateUnpackBuffer<decltype(result.a)>().get(_ctx);
+    result.k = DelegateUnpackBuffer<decltype(result.k)>().get(_ctx);
     return std::move(result);
   }
 };
