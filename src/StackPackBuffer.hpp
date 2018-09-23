@@ -3,7 +3,7 @@
  * @author Denis Kotov
  * @date 19 Apr 2017
  * @brief Contains library for creating Stack based Pack Buffer
- * @copyright MIT License. Open source: https://github.com/redradist/Transport_Buffers.git
+ * @copyright MIT License. Open source: https://github.com/redradist/Buffers.git
  */
 
 #ifndef BUFFERS_STACKPACKBUFFER_HPP

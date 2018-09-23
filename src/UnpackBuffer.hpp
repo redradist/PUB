@@ -3,7 +3,7 @@
  * @author Denis Kotov
  * @date 17 Apr 2017
  * @brief Contains abstract class for Unpack Buffer
- * @copyright MIT License. Open source: https://github.com/redradist/Transport_Buffers.git
+ * @copyright MIT License. Open source: https://github.com/redradist/Buffers.git
  */
 
 #ifndef BUFFERS_UNPACKBUFFER_HPP
