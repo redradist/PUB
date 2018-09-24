@@ -36,12 +36,24 @@ namespace Buffers {
       friend class PackBuffer;
 
       PackBufferContext & operator +=(const size_t & _size) {
+      #ifdef __EXCEPTIONS
+        if (size_ < _size) {
+          throw std::out_of_range("Acquire more memory than is available !!");
+        }
+      #endif
+
         p_msg_ += _size;
         size_ -= _size;
         return *this;
       }
 
       PackBufferContext & operator -=(const size_t & _size) {
+      #ifdef __EXCEPTIONS
+        if (orig_size_ < size_ + _size) {
+          throw std::out_of_range("Release more memory than was originally !!");
+        }
+      #endif
+
         p_msg_ -= _size;
         size_ += _size;
         return *this;
@@ -58,11 +70,13 @@ namespace Buffers {
      private:
       PackBufferContext(uint8_t *& _pMsg, size_t & _size)
         : p_msg_{_pMsg}
-        , size_{_size} {
+        , size_{_size}
+        , orig_size_{_size} {
       }
 
       uint8_t *& p_msg_;
       size_t & size_;
+      const size_t orig_size_;
     };
 
     /**
@@ -85,43 +99,53 @@ namespace Buffers {
      * @param pMsg Pointer to the buffer
      * @param size Size of the buffer
      */
-    PackBuffer(uint8_t *pMsg, const size_t size)
-        : p_msg_(pMsg),
+    PackBuffer(uint8_t * const _pMsg, const size_t size)
+        : p_msg_(_pMsg),
           kSize_(size),
-          data_size_(0) {
+          packed_data_size_(0) {
+    }
+
+    /**
+     * Delegate constructor for packing buffer.
+     * THIS VERSION COULD BE UNSAFE IN CASE OF DUMMY USING !!
+     * Better to use main constructor
+     * @param _pMsg Pointer to the raw buffer
+     */
+    PackBuffer(uint8_t * const _pMsg)
+        : PackBuffer(_pMsg, std::numeric_limits<decltype(kSize_)>::max()) {
     }
 
    public:
     template<typename T>
-    bool put(T && t) {
+    bool put(T && _t) {
       using GeneralType = typename std::remove_reference<
                             typename std::remove_cv<T>::type
                           >::type;
-      auto pMsg = p_msg_ + data_size_;
-      auto size = kSize_ - data_size_;
+      auto pMsg = p_msg_ + packed_data_size_;
+      auto size = kSize_ - packed_data_size_;
       auto packer = DelegatePackBuffer<GeneralType>{};
-      bool result = packer.put(PackBufferContext{pMsg, size}, std::forward<T>(t));
-      data_size_ = kSize_ - size;
+      bool result = packer.put(PackBufferContext{pMsg, size}, std::forward<T>(_t));
+      packed_data_size_ = kSize_ - size;
       return result;
     }
 
     template <typename T, size_t dataLen>
-    bool put(const T t[dataLen]) {
-      auto pMsg = p_msg_ + data_size_;
-      auto size = kSize_ - data_size_;
+    bool put(const T _t[dataLen]) {
+      auto pMsg = p_msg_ + packed_data_size_;
+      auto size = kSize_ - packed_data_size_;
       auto packer = DelegatePackBuffer<T>{};
-      bool result = packer.put(PackBufferContext{pMsg, size}, t);
-      data_size_ = kSize_ - size;
+      bool result = packer.put(PackBufferContext{pMsg, size}, _t);
+      packed_data_size_ = kSize_ - size;
       return result;
     }
 
     template<typename T>
-    bool put(T * t, size_t dataLen) {
-      auto pMsg = p_msg_ + data_size_;
-      auto size = kSize_ - data_size_;
+    bool put(T * _t, size_t dataLen) {
+      auto pMsg = p_msg_ + packed_data_size_;
+      auto size = kSize_ - packed_data_size_;
       auto packer = DelegatePackBuffer<T>{};
-      bool result = packer.put(PackBufferContext{pMsg, size}, t, dataLen);
-      data_size_ = kSize_ - size;
+      bool result = packer.put(PackBufferContext{pMsg, size}, _t, dataLen);
+      packed_data_size_ = kSize_ - size;
       return result;
     }
 
@@ -129,7 +153,7 @@ namespace Buffers {
      * Method for reset packing data to the buffer
      */
     void reset() {
-      data_size_ = 0;
+      packed_data_size_ = 0;
     }
 
     /**
@@ -145,7 +169,7 @@ namespace Buffers {
      * @return Size of raw pointer to packed buffer
      */
     size_t getDataSize() const {
-      return data_size_;
+      return packed_data_size_;
     }
 
     /**
@@ -160,14 +184,14 @@ namespace Buffers {
      * Method for getting size of packed buffer
      * @return Size of packed buffer
      */
-    size_t getSize() const {
+    size_t getBufferSize() const {
       return kSize_;
     }
 
    protected:
-    uint8_t *p_msg_;
+    uint8_t * const p_msg_;
     const size_t kSize_;
-    size_t data_size_;
+    size_t packed_data_size_;
   };
 
   inline

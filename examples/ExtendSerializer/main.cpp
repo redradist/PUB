@@ -15,6 +15,6 @@ int main() {
     buffer.put(mySuperClass);
   }
 
-  UnpackBuffer unbuffer(buffer.getData());
+  UnpackBuffer unbuffer(buffer.getData(), buffer.getDataSize());
   SuperPuperClass unpackSuperClass = unbuffer.get<SuperPuperClass>();
 }
