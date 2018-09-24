@@ -15,6 +15,7 @@
 #include <list>
 #include <set>
 #include <map>
+#include <limits>
 #include <unordered_set>
 #include <unordered_map>
 
@@ -33,25 +34,47 @@ namespace Buffers {
       friend class UnpackBuffer;
 
       UnpackBufferContext & operator +=(const size_t & _size) {
-        p_pos_ += _size;
+      #ifdef __EXCEPTIONS
+        if (size_ < _size) {
+          throw std::out_of_range("Acquire more memory than is available !!");
+        }
+      #endif
+
+        p_msg_ += _size;
+        size_ -= _size;
         return *this;
       }
 
       UnpackBufferContext & operator -=(const size_t & _size) {
-        p_pos_ -= _size;
+      #ifdef __EXCEPTIONS
+        if (orig_size_ < size_ + _size) {
+          throw std::out_of_range("Release more memory than was originally !!");
+        }
+      #endif
+
+        p_msg_ -= _size;
+        size_ += _size;
         return *this;
       }
 
-      uint8_t const * data() {
-        return p_pos_;
+      const uint8_t * data() {
+        return p_msg_;
+      }
+
+      size_t size() {
+        return size_;
       }
 
      private:
-      UnpackBufferContext(uint8_t const *& _pPos)
-          : p_pos_{_pPos} {
+      UnpackBufferContext(const uint8_t *& _pMsg, size_t & _size)
+          : p_msg_{_pMsg}
+          , size_{_size}
+          , orig_size_{_size} {
       }
 
-      uint8_t const *& p_pos_;
+      const uint8_t *& p_msg_;
+      size_t & size_;
+      const size_t orig_size_;
     };
 
     /**
@@ -72,11 +95,34 @@ namespace Buffers {
    public:
     /**
      * Constructor for unpacking buffer
+     * @param _pMsg Pointer to the raw buffer
+     * @param _size Size of raw buffer
+     */
+    UnpackBuffer(uint8_t const * const _pMsg, const size_t _size)
+        : p_msg_(_pMsg)
+        , kSize_{_size}
+        , unpacked_data_size_(0) {
+    }
+
+    /**
+     * Delegate constructor for unpacking buffer.
+     * THIS VERSION COULD BE UNSAFE IN CASE OF DUMMY USING !!
+     * Better to use main constructor
+     * @param _pMsg Pointer to the raw buffer
+     */
+    UnpackBuffer(uint8_t const * const _pMsg)
+        : UnpackBuffer(_pMsg, std::numeric_limits<decltype(kSize_)>::max()) {
+    }
+
+    /**
+     * Constructor for unpacking buffer
      * @param pMsg Pointer to the raw buffer
      */
-    UnpackBuffer(void const *pMsg)
-        : p_pos_(reinterpret_cast<uint8_t const *>(pMsg)),
-          p_msg_(reinterpret_cast<uint8_t const *>(pMsg)) {
+    template <typename T, size_t dataLen>
+    UnpackBuffer(const T (&_buffer)[dataLen])
+        : p_msg_(reinterpret_cast<uint8_t const *>(_buffer))
+        , kSize_{dataLen}
+        , unpacked_data_size_(0) {
     }
 
     /**
@@ -86,8 +132,12 @@ namespace Buffers {
      */
     template<typename T>
     T get() {
+      auto pMsg = p_msg_ + unpacked_data_size_;
+      auto size = kSize_ - unpacked_data_size_;
       auto unpacker = DelegateUnpackBuffer<T>{};
-      return unpacker.get(UnpackBufferContext{p_pos_});
+      T result = unpacker.get(UnpackBufferContext{pMsg, size});
+      unpacked_data_size_ = kSize_ - size;
+      return std::move(result);
     }
 
     const char *get() {
@@ -98,12 +148,13 @@ namespace Buffers {
      * Method for reset unpacking data from the buffer
      */
     void reset() {
-      p_pos_ = p_msg_;
+      unpacked_data_size_ = 0;
     }
 
    private:
-    uint8_t const *p_pos_;
-    uint8_t const *p_msg_;
+    const uint8_t * const p_msg_;
+    const size_t kSize_;
+    size_t unpacked_data_size_;
   };
 
   /**
@@ -232,8 +283,8 @@ namespace Buffers {
       std::unordered_map<K, V> result;
       auto size = DelegateUnpackBuffer< typename std::unordered_map<K, V>::size_type >{}.get(_ctx);
       for (int i = 0; i < size; ++i) {
-        auto key = DelegateUnpackBuffer<K>().get(_ctx);
-        auto value = DelegateUnpackBuffer<V>().get(_ctx);
+        auto key = DelegateUnpackBuffer<K>{}.get(_ctx);
+        auto value = DelegateUnpackBuffer<V>{}.get(_ctx);
         result[key] = value;
       }
       return std::move(result);
