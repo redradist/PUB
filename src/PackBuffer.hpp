@@ -26,6 +26,23 @@ namespace Buffers {
    * Pack buffer class
    */
   class PackBuffer {
+   protected:
+    /**
+     * SFINAE test if getSize exist on type T
+     * @tparam T Type to check
+     */
+    template <typename T>
+    class has_getSize {
+      typedef char one;
+      typedef long two;
+
+      template <typename C> static one test(decltype(&C::getSize));
+      template <typename C> static two test(...);
+
+     public:
+      static constexpr bool value = sizeof(test<T>(0)) == sizeof(char);
+    };
+
    public:
     /**
      * Class that is responsible for holding current PackBuffer context:
@@ -147,6 +164,12 @@ namespace Buffers {
       bool result = packer.put(PackBufferContext{pMsg, size}, _t, dataLen);
       packed_data_size_ = kSize_ - size;
       return result;
+    }
+
+    template<typename T, typename std::enable_if<has_getSize<DelegatePackBuffer<T>>::value,
+                                                 int>::type = 0 >
+    inline static size_t getTypeSize() {
+      return DelegatePackBuffer<T>{}.getSize();
     }
 
     /**

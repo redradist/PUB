@@ -42,6 +42,10 @@ class PackBuffer::DelegatePackBuffer<SuperPuperClass> {
     }
     return result;
   }
+
+  static size_t getSize() {
+    return 30;
+  }
 };
 
 /**
