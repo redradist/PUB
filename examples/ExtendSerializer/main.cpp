@@ -12,6 +12,8 @@ int main() {
 
   HeapPackBuffer buffer(200);
   {
+    const auto kSize1 = HeapPackBuffer::getTypeSize<int>();
+    std::cout << "kSize1 of class SuperPuperClass = " << kSize1 << std::endl;
     const auto kSize = buffer.getTypeSize<SuperPuperClass>();
     std::cout << "Size of class SuperPuperClass = " << kSize << std::endl;
     SuperPuperClass mySuperClass;

@@ -26,23 +26,6 @@ namespace Buffers {
    * Pack buffer class
    */
   class PackBuffer {
-   protected:
-    /**
-     * SFINAE test if getSize exist on type T
-     * @tparam T Type to check
-     */
-    template <typename T>
-    class has_getSize {
-      typedef char one;
-      typedef long two;
-
-      template <typename C> static one test(decltype(&C::getSize));
-      template <typename C> static two test(...);
-
-     public:
-      static constexpr bool value = sizeof(test<T>(0)) == sizeof(char);
-    };
-
    public:
     /**
      * Class that is responsible for holding current PackBuffer context:
@@ -134,42 +117,56 @@ namespace Buffers {
 
    public:
     template<typename T>
-    bool put(T && _t) {
+    bool put(const T & _t) {
       using GeneralType = typename std::remove_reference<
                             typename std::remove_cv<T>::type
                           >::type;
       auto pMsg = p_msg_ + packed_data_size_;
       auto size = kSize_ - packed_data_size_;
       auto packer = DelegatePackBuffer<GeneralType>{};
-      bool result = packer.put(PackBufferContext{pMsg, size}, std::forward<T>(_t));
-      packed_data_size_ = kSize_ - size;
-      return result;
-    }
-
-    template <typename T, size_t dataLen>
-    bool put(const T _t[dataLen]) {
-      auto pMsg = p_msg_ + packed_data_size_;
-      auto size = kSize_ - packed_data_size_;
-      auto packer = DelegatePackBuffer<T>{};
       bool result = packer.put(PackBufferContext{pMsg, size}, _t);
       packed_data_size_ = kSize_ - size;
       return result;
     }
 
-    template<typename T>
-    bool put(T * _t, size_t dataLen) {
+    template <typename T, size_t dataLen>
+    bool put(const T _buffer[dataLen]) {
       auto pMsg = p_msg_ + packed_data_size_;
       auto size = kSize_ - packed_data_size_;
       auto packer = DelegatePackBuffer<T>{};
-      bool result = packer.put(PackBufferContext{pMsg, size}, _t, dataLen);
+      bool result = packer.put(PackBufferContext{pMsg, size}, _buffer);
       packed_data_size_ = kSize_ - size;
       return result;
     }
 
-    template<typename T, typename std::enable_if<has_getSize<DelegatePackBuffer<T>>::value,
-                                                 int>::type = 0 >
-    inline static size_t getTypeSize() {
-      return DelegatePackBuffer<T>{}.getSize();
+    template<typename T>
+    bool put(const T * _buffer, size_t dataLen) {
+      auto pMsg = p_msg_ + packed_data_size_;
+      auto size = kSize_ - packed_data_size_;
+      auto packer = DelegatePackBuffer<T>{};
+      bool result = packer.put(PackBufferContext{pMsg, size}, _buffer, dataLen);
+      packed_data_size_ = kSize_ - size;
+      return result;
+    }
+
+    template< typename T >
+    static size_t getTypeSize() {
+      return DelegatePackBuffer<T>{}.getTypeSize();
+    }
+
+    template< typename T >
+    static size_t getTypeSize(const T & _t) {
+      return DelegatePackBuffer<T>{}.getTypeSize(_t);
+    }
+
+    template< typename T, size_t dataLen >
+    static size_t getTypeSize(const T _t[dataLen]) {
+      return DelegatePackBuffer<T>{}.getTypeSize(_t);
+    }
+
+    template< typename T >
+    static size_t getTypeSize(const T * _t, size_t dataLen) {
+      return DelegatePackBuffer<T>{}.getTypeSize(_t, dataLen);
     }
 
     /**
@@ -177,6 +174,14 @@ namespace Buffers {
      */
     void reset() {
       packed_data_size_ = 0;
+    }
+
+    /**
+     * Method implicit conversion buffer to the raw pointer
+     * @return Raw pointer to the packed data
+     */
+    operator uint8_t const *() const {
+      return p_msg_;
     }
 
     /**
@@ -193,14 +198,6 @@ namespace Buffers {
      */
     size_t getDataSize() const {
       return packed_data_size_;
-    }
-
-    /**
-     * Method implicit conversion buffer to the raw pointer
-     * @return Raw pointer to the packed data
-     */
-    operator uint8_t const *() const {
-      return p_msg_;
     }
 
     /**
@@ -253,15 +250,15 @@ namespace Buffers {
     /**
      * Method for packing in buffer array of data
      * @tparam dataLen Array lenght
-     * @param t Array to packing data
+     * @param _buffer Array to packing data
      * @return Return true if packing is succeed, false otherwise
      */
     template <typename TBufferContext, size_t dataLen>
-    static bool put(TBufferContext _ctx, const T t[dataLen]) {
+    static bool put(TBufferContext _ctx, const T _buffer[dataLen]) {
       bool result = false;
-      if (t && (sizeof(dataLen) + sizeof(T) * dataLen) <= _ctx.size()) {
+      if (_buffer && (sizeof(dataLen) + sizeof(T) * dataLen) <= _ctx.size()) {
         if (DelegatePackBuffer<decltype(dataLen)>{}.put(_ctx, dataLen)) {
-          const uint8_t *p_start_ = reinterpret_cast<const uint8_t *>(t);
+          const uint8_t *p_start_ = reinterpret_cast<const uint8_t *>(_buffer);
           std::copy(p_start_, p_start_ + sizeof(T) * dataLen, _ctx.data());
           _ctx += sizeof(T) * dataLen;
           result = true;
@@ -273,22 +270,35 @@ namespace Buffers {
     /**
      * Method for packing in buffer array of data
      * @tparam T Type of packing data
-     * @param t Pointer on first element of packing data
+     * @param _buffer Pointer on first element of packing data
      * @param dataLen Length of data to be stored
      * @return Return true if packing is succeed, false otherwise
      */
     template <typename TBufferContext>
-    static bool put(TBufferContext _ctx, T * t, size_t dataLen) {
+    static bool put(TBufferContext _ctx, const T * _buffer, const size_t dataLen) {
       bool result = false;
-      if (t && (sizeof(dataLen) + sizeof(T) * dataLen) <= _ctx.size()) {
+      if (_buffer && (sizeof(dataLen) + sizeof(T) * dataLen) <= _ctx.size()) {
         if (DelegatePackBuffer<decltype(dataLen)>{}.put(_ctx, dataLen)) {
-          const uint8_t *p_start_ = reinterpret_cast<const uint8_t *>(t);
+          const uint8_t *p_start_ = reinterpret_cast<const uint8_t *>(_buffer);
           std::copy(p_start_, p_start_ + sizeof(T) * dataLen, _ctx.data());
           _ctx += sizeof(T) * dataLen;
           result = true;
         }
       }
       return result;
+    }
+
+    static size_t getTypeSize() {
+      return sizeof(T);
+    }
+
+    template< size_t dataLen >
+    static size_t getTypeSize(const T _buffer[dataLen]) {
+      return sizeof(_buffer);
+    }
+
+    static size_t getTypeSize(const T * _buffer, const size_t dataLen) {
+      return sizeof(size_t) + sizeof(T) * dataLen;
     }
   };
 
@@ -318,15 +328,8 @@ namespace Buffers {
       return result;
     }
 
-    /**
-     * Specialization for null-terminated string
-     * @param str Null-terminated string
-     * @return Return true if packing is succeed, false otherwise
-     */
-    template <typename TBufferContext>
-    static bool put(TBufferContext _ctx, char *str) {
-      return PackBuffer::DelegatePackBuffer<char*>{}
-             .put(_ctx, static_cast<const char *>(str));
+    static size_t getTypeSize(const char *str) {
+      return std::strlen(str) + 1;;
     }
   };
 
@@ -354,15 +357,8 @@ namespace Buffers {
       return result;
     }
 
-    /**
-     * Method for packing in buffer lvalue standard string
-     * @param str String for packing
-     * @return Return true if packing is succeed, false otherwise
-     */
-    template <typename TBufferContext>
-    static bool put(TBufferContext _ctx, std::string &str) {
-      return PackBuffer::DelegatePackBuffer<std::string>{}
-             .put(_ctx, static_cast<const std::string &>(str));
+    static size_t getTypeSize(const std::string & str) {
+      return str.size();
     }
   };
 
@@ -394,23 +390,12 @@ namespace Buffers {
     }
 
     /**
-     * Method for packing rvalue std::vector in buffer
-     * @tparam T Type of std::vector
-     * @param vec rvalue std::vector for packing
-     * @return Return true if packing is succeed, false otherwise
+     * Move semantic is not supported
      */
-    template <typename TBufferContext>
-    static bool put(TBufferContext _ctx, std::vector<T> && vec) {
-      bool result = false;
-      if (vec.size() > 0) {
-        if (DelegatePackBuffer<decltype(vec.size())>{}.put(_ctx, vec.size()) &&
-            vec.size() <= _ctx.size()) {
-          std::move(vec.data(), vec.data() + vec.size(), (T*)(_ctx.data()));
-          _ctx += vec.size() * sizeof(T);
-          result = true;
-        }
-      }
-      return result;
+    static bool put(std::vector<T> && lst) = delete;
+
+    static size_t getTypeSize(const std::string & str) {
+      return str.size();
     }
   };
 
@@ -443,9 +428,13 @@ namespace Buffers {
     }
 
     /**
-     * Move semantic is not supported for std::list
+     * Move semantic is not supported
      */
-    bool put(std::list<T> && lst) = delete;
+    static bool put(std::list<T> && lst) = delete;
+
+    static size_t getTypeSize(const std::list<T> & lst) {
+      return lst.size();
+    }
   };
 
   /**
@@ -462,12 +451,12 @@ namespace Buffers {
      * @return Return true if packing is succeed, false otherwise
      */
     template <typename TBufferContext>
-    static bool put(TBufferContext _ctx, const std::set<K> & mp) {
+    static bool put(TBufferContext _ctx, const std::set<K> & _set) {
       bool result = false;
-      if (mp.size() > 0) {
-        if (DelegatePackBuffer<decltype(mp.size())>{}.put(_ctx, mp.size()) &&
-            mp.size() <= _ctx.size()) {
-          for (auto& ve : mp) {
+      if (_set.size() > 0) {
+        if (DelegatePackBuffer<decltype(_set.size())>{}.put(_ctx, _set.size()) &&
+            _set.size() <= _ctx.size()) {
+          for (auto& ve : _set) {
             DelegatePackBuffer<K>{}.put(_ctx, ve);
           }
           result = true;
@@ -477,9 +466,13 @@ namespace Buffers {
     }
 
     /**
-     * Move semantic is not supported for std::set
+     * Move semantic is not supported
      */
-    static bool put(std::set<K> && mp) = delete;
+    static bool put(std::set<K> && _set) = delete;
+
+    static size_t getTypeSize(const std::set<K> & _set) {
+      return _set.size();
+    }
   };
 
   /**
@@ -505,9 +498,13 @@ namespace Buffers {
     }
 
     /**
-     * Move semantic is not supported for std::map
+     * Move semantic is not supported
      */
-    static bool put(std::pair<K, V> && mp) = delete;
+    static bool put(std::pair<K, V> && pr) = delete;
+
+    static size_t getTypeSize(const std::pair<K, V> & pr) {
+      return pr.size();
+    }
   };
 
   /**
@@ -542,9 +539,13 @@ namespace Buffers {
     }
 
     /**
-     * Move semantic is not supported for std::map
+     * Move semantic is not supported
      */
     static bool put(std::map<K, V> && mp) = delete;
+
+    static size_t getTypeSize(const std::map<K, V> & mp) {
+      return mp.size();
+    }
   };
 
   /**
@@ -561,12 +562,12 @@ namespace Buffers {
      * @return Return true if packing is succeed, false otherwise
      */
     template <typename TBufferContext>
-    static bool put(TBufferContext _ctx, const std::unordered_set<K> & mp) {
+    static bool put(TBufferContext _ctx, const std::unordered_set<K> & _set) {
       bool result = false;
-      if (mp.size() > 0) {
-        if (DelegatePackBuffer<decltype(mp.size())>{}.put(_ctx, mp.size()) &&
-            mp.size() <= _ctx.size()) {
-          for (auto& ve : mp) {
+      if (_set.size() > 0) {
+        if (DelegatePackBuffer<decltype(_set.size())>{}.put(_ctx, _set.size()) &&
+            _set.size() <= _ctx.size()) {
+          for (auto& ve : _set) {
             DelegatePackBuffer<K>{}.put(_ctx, ve);
           }
           result = true;
@@ -576,9 +577,13 @@ namespace Buffers {
     }
 
     /**
-     * Move semantic is not supported for std::unordered_set
+     * Move semantic is not supported
      */
-    static bool put(std::unordered_set<K> && mp) = delete;
+    static bool put(std::unordered_set<K> && _set) = delete;
+
+    static size_t getTypeSize(const std::unordered_set<K> & _set) {
+      return _set.size();
+    }
   };
 
   /**
@@ -613,9 +618,13 @@ namespace Buffers {
     }
 
     /**
-     * Move semantic is not supported for std::unordered_map
+     * Move semantic is not supported
      */
     static bool put(std::unordered_map<K, V> && mp) = delete;
+
+    static size_t getTypeSize(const std::unordered_map<K, V> & mp) {
+      return mp.size();
+    }
   };
 }
 

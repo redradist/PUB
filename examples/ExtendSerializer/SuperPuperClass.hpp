@@ -43,7 +43,7 @@ class PackBuffer::DelegatePackBuffer<SuperPuperClass> {
     return result;
   }
 
-  static size_t getSize() {
+  static size_t getTypeSize() {
     return 30;
   }
 };
