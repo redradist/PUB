@@ -130,7 +130,7 @@ namespace Buffers {
     }
 
     template <typename T, size_t dataLen>
-    bool put(const T _buffer[dataLen]) {
+    bool put(const T (&_buffer)[dataLen]) {
       auto pMsg = p_msg_ + packed_data_size_;
       auto size = kSize_ - packed_data_size_;
       auto packer = DelegatePackBuffer<T>{};
@@ -138,6 +138,9 @@ namespace Buffers {
       packed_data_size_ = kSize_ - size;
       return result;
     }
+
+    template <size_t dataLen>
+    bool put(const char (&_buffer)[dataLen]);
 
     template<typename T>
     bool put(const T * _buffer, size_t dataLen) {
@@ -254,7 +257,7 @@ namespace Buffers {
      * @return Return true if packing is succeed, false otherwise
      */
     template <typename TBufferContext, size_t dataLen>
-    static bool put(TBufferContext _ctx, const T _buffer[dataLen]) {
+    static bool put(TBufferContext _ctx, const T (&_buffer)[dataLen]) {
       bool result = false;
       if (_buffer && (sizeof(dataLen) + sizeof(T) * dataLen) <= _ctx.size()) {
         if (DelegatePackBuffer<decltype(dataLen)>{}.put(_ctx, dataLen)) {
@@ -266,6 +269,7 @@ namespace Buffers {
       }
       return result;
     }
+
 
     /**
      * Method for packing in buffer array of data
@@ -332,6 +336,17 @@ namespace Buffers {
       return std::strlen(str) + 1;;
     }
   };
+
+  template <size_t dataLen>
+  bool PackBuffer::put(const char (&_buffer)[dataLen]) {
+    auto pMsg = p_msg_ + packed_data_size_;
+    auto size = kSize_ - packed_data_size_;
+    auto packer = DelegatePackBuffer<char *>{};
+    bool result = packer.put(PackBufferContext{pMsg, size},
+                             static_cast<const char *>(_buffer));
+    packed_data_size_ = kSize_ - size;
+    return result;
+  }
 
   /**
    * Specialization DelegatePackBuffer class for std::string
