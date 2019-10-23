@@ -25,7 +25,7 @@ class HeapPackBuffer
   }
 
   ~HeapPackBuffer() {
-    delete [] p_msg_;
+    delete [] getData();
   }
 };
 }

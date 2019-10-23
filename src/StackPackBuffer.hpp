@@ -20,6 +20,9 @@ namespace Buffers {
   template<size_t _Size>
   class StackPackBuffer
       : public PackBuffer {
+#if __cplusplus > 199711L
+    static_assert(_Size > 0, "_Size should be more than 0");
+#endif
    public:
     StackPackBuffer()
         : PackBuffer(buffer_, _Size) {

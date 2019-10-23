@@ -34,7 +34,7 @@ class PackBuffer::DelegatePackBuffer<SuperPuperClass> {
    * @return true if successfully, false - otherwise
    */
   template <typename TBufferContext>
-  bool put(TBufferContext _ctx, const SuperPuperClass & _type) {
+  bool put(TBufferContext & _ctx, const SuperPuperClass & _type) {
     bool result = false;
     if (DelegatePackBuffer<decltype(_type.a)>::put(_ctx, _type.a) &&
         DelegatePackBuffer<decltype(_type.k)>::put(_ctx, _type.k)) {
@@ -61,7 +61,7 @@ class UnpackBuffer::DelegateUnpackBuffer<SuperPuperClass> {
    * @return Instance of deserialized class
    */
   template <typename TBufferContext>
-  SuperPuperClass get(TBufferContext _ctx) {
+  SuperPuperClass get(TBufferContext & _ctx) {
     SuperPuperClass result;
     result.a = DelegateUnpackBuffer<decltype(result.a)>::get(_ctx);
     result.k = DelegateUnpackBuffer<decltype(result.k)>::get(_ctx);

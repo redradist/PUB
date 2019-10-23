@@ -29,52 +29,57 @@ namespace Buffers {
      * Class that is responsible for holding current UnpackBuffer context:
      *     next position in the message to unpack
      */
-    class UnpackBufferContext {
+    class Context {
      public:
       friend class UnpackBuffer;
 
-      UnpackBufferContext & operator +=(const size_t & _size) {
+      Context(const Context&) = delete;
+      Context(Context&&) = delete;
+      Context& operator=(const Context&) = delete;
+      Context& operator=(Context&&) = delete;
+
+      Context & operator +=(const size_t & _size) {
       #ifdef __EXCEPTIONS
-        if (size_ < _size) {
+        if (buf_size_ < (msg_size_ + _size)) {
           throw std::out_of_range("Acquire more memory than is available !!");
         }
       #endif
 
         p_msg_ += _size;
-        size_ -= _size;
+        msg_size_ += _size;
         return *this;
       }
 
-      UnpackBufferContext & operator -=(const size_t & _size) {
+      Context & operator -=(const size_t & _size) {
       #ifdef __EXCEPTIONS
-        if (orig_size_ < size_ + _size) {
+        if (msg_size_ < _size) {
           throw std::out_of_range("Release more memory than was originally !!");
         }
       #endif
 
         p_msg_ -= _size;
-        size_ += _size;
+        msg_size_ -= _size;
         return *this;
       }
 
-      const uint8_t * data() {
+      uint8_t const * buffer() const {
         return p_msg_;
       }
 
-      size_t size() {
-        return size_;
+      size_t buffer_size() const {
+        return (buf_size_ - msg_size_);
       }
 
      private:
-      UnpackBufferContext(const uint8_t *& _pMsg, size_t & _size)
-          : p_msg_{_pMsg}
-          , size_{_size}
-          , orig_size_{_size} {
+      Context(uint8_t const * _pMsg, size_t _size)
+          : buf_size_{_size}
+          , p_msg_{_pMsg}
+          , msg_size_{0} {
       }
 
-      const uint8_t *& p_msg_;
-      size_t & size_;
-      const size_t orig_size_;
+      const size_t buf_size_;
+      uint8_t const * p_msg_;
+      size_t msg_size_;
     };
 
     /**
@@ -85,8 +90,8 @@ namespace Buffers {
     class DelegateUnpackBuffer {
      public:
       template <typename TBufferContext>
-      static T get(TBufferContext _ctx) {
-        const T &t = *(reinterpret_cast<const T *>(_ctx.data()));
+      static T get(TBufferContext & _ctx) {
+        const T &t = *(reinterpret_cast<const T *>(_ctx.buffer()));
         _ctx += sizeof(T);
         return std::move(t);
       }
@@ -99,9 +104,8 @@ namespace Buffers {
      * @param _size Size of raw buffer
      */
     UnpackBuffer(uint8_t const * const _pMsg, const size_t _size)
-        : p_msg_(_pMsg)
-        , kSize_{_size}
-        , unpacked_data_size_(0) {
+        : p_buf_(_pMsg)
+        , context_(_pMsg, _size) {
     }
 
     /**
@@ -111,7 +115,7 @@ namespace Buffers {
      * @param _pMsg Pointer to the raw buffer
      */
     UnpackBuffer(uint8_t const * const _pMsg)
-        : UnpackBuffer(_pMsg, std::numeric_limits<decltype(kSize_)>::max()) {
+        : UnpackBuffer(_pMsg, std::numeric_limits<size_t>::max()) {
     }
 
     /**
@@ -120,9 +124,8 @@ namespace Buffers {
      */
     template <typename T, size_t dataLen>
     UnpackBuffer(const T (&_buffer)[dataLen])
-        : p_msg_(reinterpret_cast<uint8_t const *>(_buffer))
-        , kSize_{dataLen}
-        , unpacked_data_size_(0) {
+        : p_buf_(reinterpret_cast<uint8_t const *>(_buffer))
+        , context_(p_buf_, sizeof(T) * dataLen) {
     }
 
     /**
@@ -132,11 +135,8 @@ namespace Buffers {
      */
     template<typename T>
     T get() {
-      auto pMsg = p_msg_ + unpacked_data_size_;
-      auto size = kSize_ - unpacked_data_size_;
       auto unpacker = DelegateUnpackBuffer<T>{};
-      T result = unpacker.get(UnpackBufferContext{pMsg, size});
-      unpacked_data_size_ = kSize_ - size;
+      T result = unpacker.get(context_);
       return std::move(result);
     }
 
@@ -148,13 +148,12 @@ namespace Buffers {
      * Method for reset unpacking data from the buffer
      */
     void reset() {
-      unpacked_data_size_ = 0;
+      context_ -= context_.msg_size_;
     }
 
    private:
-    const uint8_t * const p_msg_;
-    const size_t kSize_;
-    size_t unpacked_data_size_;
+    const uint8_t * const p_buf_;
+    Context context_;
   };
 
   /**
@@ -172,8 +171,8 @@ namespace Buffers {
      * @return Null-terminated string
      */
     template <typename TBufferContext>
-    static const char *get(TBufferContext _ctx) {
-      const char *t = reinterpret_cast<const char *>(_ctx.data());
+    static const char *get(TBufferContext & _ctx) {
+      const char *t = reinterpret_cast<const char *>(_ctx.buffer());
       _ctx += std::strlen(t) + 1;
       return t;
     }
@@ -183,7 +182,7 @@ namespace Buffers {
   class UnpackBuffer::DelegateUnpackBuffer<std::string> {
    public:
     template <typename TBufferContext>
-    static std::string get(TBufferContext _ctx) {
+    static std::string get(TBufferContext & _ctx) {
       std::string result = DelegateUnpackBuffer<const char*>{}.get(_ctx);
       return std::move(result);
     }
@@ -193,7 +192,7 @@ namespace Buffers {
   class UnpackBuffer::DelegateUnpackBuffer<std::vector<T>> {
    public:
     template <typename TBufferContext>
-    static std::vector<T> get(TBufferContext _ctx) {
+    static std::vector<T> get(TBufferContext & _ctx) {
       std::vector<T> result;
       auto size = DelegateUnpackBuffer< typename std::vector<T>::size_type >{}.get(_ctx);
       for (int i = 0; i < size; ++i) {
@@ -207,7 +206,7 @@ namespace Buffers {
   class UnpackBuffer::DelegateUnpackBuffer<std::list<T>> {
    public:
     template <typename TBufferContext>
-    static std::list<T> get(TBufferContext _ctx) {
+    static std::list<T> get(TBufferContext & _ctx) {
       std::list<T> result;
       auto size = DelegateUnpackBuffer< typename std::vector<T>::size_type >{}.get(_ctx);
       for (int i = 0; i < size; ++i) {
@@ -221,7 +220,7 @@ namespace Buffers {
   class UnpackBuffer::DelegateUnpackBuffer<std::set<K>> {
    public:
     template <typename TBufferContext>
-    static std::set<K> get(TBufferContext _ctx) {
+    static std::set<K> get(TBufferContext & _ctx) {
       std::set<K> result;
       auto size = DelegateUnpackBuffer< typename std::set<K>::size_type >{}.get(_ctx);
       for (int i = 0; i < size; ++i) {
@@ -236,7 +235,7 @@ namespace Buffers {
   class UnpackBuffer::DelegateUnpackBuffer<std::pair<K, V>> {
    public:
     template <typename TBufferContext>
-    static std::pair<K, V> get(TBufferContext _ctx) {
+    static std::pair<K, V> get(TBufferContext & _ctx) {
       std::pair<K, V> result;
       result.first = DelegateUnpackBuffer<K>{}.get(_ctx);
       result.second = DelegateUnpackBuffer<V>{}.get(_ctx);
@@ -248,7 +247,7 @@ namespace Buffers {
   class UnpackBuffer::DelegateUnpackBuffer<std::map<K, V>> {
    public:
     template <typename TBufferContext>
-    static std::map<K, V> get(TBufferContext _ctx) {
+    static std::map<K, V> get(TBufferContext & _ctx) {
       std::map<K, V> result;
       auto size = DelegateUnpackBuffer< typename std::map<K, V>::size_type >{}.get(_ctx);
       for (int i = 0; i < size; ++i) {
@@ -264,7 +263,7 @@ namespace Buffers {
   class UnpackBuffer::DelegateUnpackBuffer<std::unordered_set<K>> {
    public:
     template <typename TBufferContext>
-    static std::unordered_set<K> get(TBufferContext _ctx) {
+    static std::unordered_set<K> get(TBufferContext & _ctx) {
       std::unordered_set<K> result;
       auto size = DelegateUnpackBuffer< typename std::unordered_set<K>::size_type >{}.get(_ctx);
       for (int i = 0; i < size; ++i) {
@@ -279,7 +278,7 @@ namespace Buffers {
   class UnpackBuffer::DelegateUnpackBuffer<std::unordered_map<K, V>> {
    public:
     template <typename TBufferContext>
-    static std::unordered_map<K, V> get(TBufferContext _ctx) {
+    static std::unordered_map<K, V> get(TBufferContext & _ctx) {
       std::unordered_map<K, V> result;
       auto size = DelegateUnpackBuffer< typename std::unordered_map<K, V>::size_type >{}.get(_ctx);
       for (int i = 0; i < size; ++i) {
