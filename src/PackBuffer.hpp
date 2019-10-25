@@ -633,6 +633,12 @@ namespace Buffers {
       return mp.size();
     }
   };
+
+  template <typename T>
+  PackBuffer& operator<<(PackBuffer& buffer, T && t) {
+    buffer.put(std::forward<T>(t));
+    return buffer;
+  }
 }
 
 #endif //BUFFERS_PACKBUFFER_HPP

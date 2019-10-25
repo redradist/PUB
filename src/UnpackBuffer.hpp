@@ -289,6 +289,12 @@ namespace Buffers {
       return std::move(result);
     }
   };
+
+  template <typename T>
+  UnpackBuffer& operator>>(UnpackBuffer& unbuffer, T & t) {
+    t = unbuffer.get<T>();
+    return unbuffer;
+  }
 }
 
 #endif //BUFFERS_UNPACKBUFFER_HPP

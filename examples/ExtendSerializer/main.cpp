@@ -17,9 +17,14 @@ int main() {
     const auto kSize = buffer.getTypeSize<SuperPuperClass>();
     std::cout << "Size of class SuperPuperClass = " << kSize << std::endl;
     SuperPuperClass mySuperClass;
-    buffer.put(mySuperClass);
+    mySuperClass.a = 2;
+    buffer << mySuperClass;
+//    buffer.put(mySuperClass);
   }
 
   UnpackBuffer unbuffer(buffer.getData(), buffer.getDataSize());
-  SuperPuperClass unpackSuperClass = unbuffer.get<SuperPuperClass>();
+  SuperPuperClass unpackSuperClass;
+  unbuffer >> unpackSuperClass;
+//  SuperPuperClass unpackSuperClass = unbuffer.get<SuperPuperClass>();
+  std::cout << "unpackSuperClass.a = " << unpackSuperClass.a << std::endl;
 }
