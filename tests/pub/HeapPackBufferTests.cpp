@@ -3,8 +3,8 @@
 //
 
 #include <gtest/gtest.h>
-#include "src/HeapPackBuffer.hpp"
-#include "src/UnpackBuffer.hpp"
+#include "pub/HeapPackBuffer.hpp"
+#include "pub/UnpackBuffer.hpp"
 
 using Buffers::HeapPackBuffer;
 using Buffers::UnpackBuffer;

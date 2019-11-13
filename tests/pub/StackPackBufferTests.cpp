@@ -3,8 +3,8 @@
 //
 
 #include <gtest/gtest.h>
-#include "src/StackPackBuffer.hpp"
-#include "src/UnpackBuffer.hpp"
+#include "pub/StackPackBuffer.hpp"
+#include "pub/UnpackBuffer.hpp"
 
 using Buffers::StackPackBuffer;
 using Buffers::UnpackBuffer;

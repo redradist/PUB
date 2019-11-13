@@ -94,12 +94,6 @@ namespace Buffers {
 
    public:
     /**
-     * Destructor for deletion memory if it was allocated by purselves
-     */
-    virtual ~PackBuffer() = 0;
-
-   protected:
-    /**
      * Constructor in which should be put prepared buffer.
      * DO NOT DELETE MEMORY BY YOURSELF INSIDE OF THIS CLASS !!
      * @param pMsg Pointer to the buffer
@@ -119,6 +113,11 @@ namespace Buffers {
     PackBuffer(uint8_t * const _pMsg)
         : PackBuffer(_pMsg, std::numeric_limits<size_t>::max()) {
     }
+
+    /**
+     * Destructor for deletion memory if it was allocated by purselves
+     */
+    virtual ~PackBuffer();
 
    public:
     template<typename T>
