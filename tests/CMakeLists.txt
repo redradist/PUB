@@ -7,7 +7,7 @@ include_directories(${PUB_INCLUDE_DIR})
 include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
 
 # Get all test files recursivly
-file(GLOB_RECURSE PUB_TEST_SOURCE_FILES pub/*.cpp)
+file(GLOB_RECURSE PUB_TEST_SOURCE_FILES main.cpp pub/*.cpp)
 
 ################################
 # Unit Tests
