@@ -451,10 +451,10 @@ namespace Buffers {
 
     template <typename TT>
     static typename std::enable_if<!(std::is_trivial<TT>::value), size_t>::type
-    getTypeSize(const std::list<T> & _lst) {
+    getTypeSize(const std::list<TT> & _lst) {
       size_t typeSize = sizeof(_lst.size());
       for (auto& ve : _lst) {
-        typeSize += DelegatePackBuffer<T>{}.getTypeSize(ve);
+        typeSize += DelegatePackBuffer<TT>{}.getTypeSize(ve);
       }
       return typeSize;
     }
