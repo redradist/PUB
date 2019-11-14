@@ -397,10 +397,19 @@ namespace Buffers {
       return result;
     }
 
-    static size_t getTypeSize(const std::vector<T> & _vec) {
+    template <typename TT>
+    static typename std::enable_if<(std::is_trivial<TT>::value), size_t>::type
+    getTypeSize(const std::vector<TT> & _vec) {
+      return (sizeof(_vec.size()) + sizeof(TT) * _vec.size());
+    }
+
+
+    template <typename TT>
+    static typename std::enable_if<!(std::is_trivial<TT>::value), size_t>::type
+    getTypeSize(const std::vector<TT> & _vec) {
       size_t typeSize = sizeof(_vec.size());
       for (auto& ve : _vec) {
-        typeSize += DelegatePackBuffer<T>{}.getTypeSize(ve);
+        typeSize += DelegatePackBuffer<TT>{}.getTypeSize(ve);
       }
       return typeSize;
     }
@@ -434,7 +443,15 @@ namespace Buffers {
       return result;
     }
 
-    static size_t getTypeSize(const std::list<T> & _lst) {
+    template <typename TT>
+    static typename std::enable_if<(std::is_trivial<TT>::value), size_t>::type
+    getTypeSize(const std::list<TT> & _lst) {
+      return (sizeof(_lst.size()) + sizeof(TT) * _lst.size());
+    }
+
+    template <typename TT>
+    static typename std::enable_if<!(std::is_trivial<TT>::value), size_t>::type
+    getTypeSize(const std::list<T> & _lst) {
       size_t typeSize = sizeof(_lst.size());
       for (auto& ve : _lst) {
         typeSize += DelegatePackBuffer<T>{}.getTypeSize(ve);
@@ -471,10 +488,18 @@ namespace Buffers {
       return result;
     }
 
-    static size_t getTypeSize(const std::set<K> & _set) {
+    template <typename KK>
+    static typename std::enable_if<(std::is_trivial<KK>::value), size_t>::type
+    getTypeSize(const std::set<KK> & _mp) {
+      return (sizeof(_mp.size()) + sizeof(KK) * _mp.size());
+    }
+
+    template <typename KK>
+    static typename std::enable_if<!(std::is_trivial<KK>::value), size_t>::type
+    getTypeSize(const std::set<KK> & _set) {
       size_t typeSize = sizeof(_set.size());
       for (auto& ve : _set) {
-        typeSize += DelegatePackBuffer<K>{}.getTypeSize(ve);
+        typeSize += DelegatePackBuffer<KK>{}.getTypeSize(ve);
       }
       return typeSize;
     }
@@ -542,11 +567,19 @@ namespace Buffers {
       return result;
     }
 
-    static size_t getTypeSize(const std::map<K, V> & _mp) {
+    template <typename KK, typename VV>
+    static typename std::enable_if<(std::is_trivial<KK>::value && std::is_trivial<VV>::value), size_t>::type
+    getTypeSize(const std::unordered_map<KK, VV> & _mp) {
+      return (sizeof(_mp.size()) + (sizeof(KK) + sizeof(VV)) * _mp.size());
+    }
+
+    template <typename KK, typename VV>
+    static typename std::enable_if<!(std::is_trivial<KK>::value && std::is_trivial<VV>::value), size_t>::type
+    getTypeSize(const std::map<KK, VV> & _mp) {
       size_t typeSize = sizeof(_mp.size());
       for (auto& ve : _mp) {
-        typeSize += DelegatePackBuffer<K>{}.getTypeSize(ve.first);
-        typeSize += DelegatePackBuffer<V>{}.getTypeSize(ve.second);
+        typeSize += DelegatePackBuffer<KK>{}.getTypeSize(ve.first);
+        typeSize += DelegatePackBuffer<VV>{}.getTypeSize(ve.second);
       }
       return typeSize;
     }
@@ -580,10 +613,18 @@ namespace Buffers {
       return result;
     }
 
-    static size_t getTypeSize(const std::unordered_set<K> & _set) {
+    template <typename KK>
+    static typename std::enable_if<(std::is_trivial<KK>::value), size_t>::type
+    getTypeSize(const std::unordered_set<KK> & _mp) {
+      return (sizeof(_mp.size()) + sizeof(KK) * _mp.size());
+    }
+
+    template <typename KK>
+    static typename std::enable_if<!(std::is_trivial<KK>::value), size_t>::type
+    getTypeSize(const std::unordered_set<KK> & _set) {
       size_t typeSize = sizeof(_set.size());
       for (auto& ve : _set) {
-        typeSize += DelegatePackBuffer<K>{}.getTypeSize(ve);
+        typeSize += DelegatePackBuffer<KK>{}.getTypeSize(ve);
       }
       return typeSize;
     }
@@ -620,11 +661,19 @@ namespace Buffers {
       return result;
     }
 
-    static size_t getTypeSize(const std::unordered_map<K, V> & _mp) {
+    template <typename KK, typename VV>
+    static typename std::enable_if<(std::is_trivial<KK>::value && std::is_trivial<VV>::value), size_t>::type
+    getTypeSize(const std::unordered_map<KK, VV> & _mp) {
+      return (sizeof(_mp.size()) + (sizeof(KK) + sizeof(VV)) * _mp.size());
+    }
+
+    template <typename KK, typename VV>
+    static typename std::enable_if<!(std::is_trivial<KK>::value && std::is_trivial<VV>::value), size_t>::type
+    getTypeSize(const std::unordered_map<KK, VV> & _mp) {
       size_t typeSize = sizeof(_mp.size());
       for (auto& ve : _mp) {
-        typeSize += DelegatePackBuffer<K>{}.getTypeSize(ve.first);
-        typeSize += DelegatePackBuffer<V>{}.getTypeSize(ve.second);
+        typeSize += DelegatePackBuffer<KK>{}.getTypeSize(ve.first);
+        typeSize += DelegatePackBuffer<VV>{}.getTypeSize(ve.second);
       }
       return typeSize;
     }
