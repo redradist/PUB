@@ -395,11 +395,6 @@ namespace Buffers {
       return result;
     }
 
-    /**
-     * Move semantic is not supported
-     */
-    static bool put(std::vector<T> && lst) = delete;
-
     static size_t getTypeSize(const std::string & str) {
       return str.size();
     }
@@ -432,11 +427,6 @@ namespace Buffers {
       }
       return result;
     }
-
-    /**
-     * Move semantic is not supported
-     */
-    static bool put(std::list<T> && lst) = delete;
 
     static size_t getTypeSize(const std::list<T> & lst) {
       return lst.size();
@@ -471,11 +461,6 @@ namespace Buffers {
       return result;
     }
 
-    /**
-     * Move semantic is not supported
-     */
-    static bool put(std::set<K> && _set) = delete;
-
     static size_t getTypeSize(const std::set<K> & _set) {
       return _set.size();
     }
@@ -502,11 +487,6 @@ namespace Buffers {
       DelegatePackBuffer<V>{}.put(_ctx, pr.second);
       return true;
     }
-
-    /**
-     * Move semantic is not supported
-     */
-    static bool put(std::pair<K, V> && pr) = delete;
 
     static size_t getTypeSize(const std::pair<K, V> & pr) {
       return pr.size();
@@ -544,11 +524,6 @@ namespace Buffers {
       return result;
     }
 
-    /**
-     * Move semantic is not supported
-     */
-    static bool put(std::map<K, V> && mp) = delete;
-
     static size_t getTypeSize(const std::map<K, V> & mp) {
       return mp.size();
     }
@@ -581,11 +556,6 @@ namespace Buffers {
       }
       return result;
     }
-
-    /**
-     * Move semantic is not supported
-     */
-    static bool put(std::unordered_set<K> && _set) = delete;
 
     static size_t getTypeSize(const std::unordered_set<K> & _set) {
       return _set.size();
@@ -622,11 +592,6 @@ namespace Buffers {
       }
       return result;
     }
-
-    /**
-     * Move semantic is not supported
-     */
-    static bool put(std::unordered_map<K, V> && mp) = delete;
 
     static size_t getTypeSize(const std::unordered_map<K, V> & mp) {
       return mp.size();
