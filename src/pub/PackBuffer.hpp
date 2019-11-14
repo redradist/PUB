@@ -158,8 +158,8 @@ namespace Buffers {
     }
 
     template< typename T, size_t dataLen >
-    static size_t getTypeSize(const T _t[dataLen]) {
-      return DelegatePackBuffer<T>{}.getTypeSize(_t);
+    static size_t getTypeSize(const T (&_array)[dataLen]) {
+      return DelegatePackBuffer<T>{}.getTypeSize(_array);
     }
 
     template< typename T >
@@ -235,7 +235,7 @@ namespace Buffers {
     template <typename TBufferContext>
     static bool put(TBufferContext & _ctx, const T & t) {
       bool result = false;
-      if (sizeof(T) <= _ctx.buffer_size()) {
+      if (getTypeSize() <= _ctx.buffer_size()) {
         const uint8_t *p_start_ = reinterpret_cast<const uint8_t *>(&t);
         std::copy(p_start_, p_start_ + sizeof(T), _ctx.buffer());
         _ctx += sizeof(T);
@@ -253,13 +253,12 @@ namespace Buffers {
     template <typename TBufferContext, size_t dataLen>
     static bool put(TBufferContext & _ctx, const T (&_buffer)[dataLen]) {
       bool result = false;
-      if (_buffer && (sizeof(dataLen) + sizeof(T) * dataLen) <= _ctx.size()) {
-        if (DelegatePackBuffer<decltype(dataLen)>{}.put(_ctx, dataLen)) {
-          const uint8_t *p_start_ = reinterpret_cast<const uint8_t *>(_buffer);
-          std::copy(p_start_, p_start_ + sizeof(T) * dataLen, _ctx.data());
-          _ctx += sizeof(T) * dataLen;
-          result = true;
-        }
+      if (getTypeSize(_buffer) <= _ctx.size()) {
+        DelegatePackBuffer<decltype(dataLen)>{}.put(_ctx, dataLen);
+        const uint8_t *p_start_ = reinterpret_cast<const uint8_t *>(_buffer);
+        std::copy(p_start_, p_start_ + sizeof(T) * dataLen, _ctx.data());
+        _ctx += sizeof(T) * dataLen;
+        result = true;
       }
       return result;
     }
@@ -269,19 +268,18 @@ namespace Buffers {
      * Method for packing in buffer array of data
      * @tparam T Type of packing data
      * @param _buffer Pointer on first element of packing data
-     * @param dataLen Length of data to be stored
+     * @param _dataLen Length of data to be stored
      * @return Return true if packing is succeed, false otherwise
      */
     template <typename TBufferContext>
-    static bool put(TBufferContext & _ctx, const T * _buffer, const size_t dataLen) {
+    static bool put(TBufferContext & _ctx, const T * _buffer, const size_t _dataLen) {
       bool result = false;
-      if (_buffer && (sizeof(dataLen) + sizeof(T) * dataLen) <= _ctx.buffer_size()) {
-        if (DelegatePackBuffer<decltype(dataLen)>{}.put(_ctx, dataLen)) {
-          const uint8_t *p_start_ = reinterpret_cast<const uint8_t *>(_buffer);
-          std::copy(p_start_, p_start_ + sizeof(T) * dataLen, _ctx.buffer());
-          _ctx += sizeof(T) * dataLen;
-          result = true;
-        }
+      if (_buffer && getTypeSize(_buffer, _dataLen) <= _ctx.buffer_size()) {
+        DelegatePackBuffer<decltype(_dataLen)>{}.put(_ctx, _dataLen);
+        const uint8_t *p_start_ = reinterpret_cast<const uint8_t *>(_buffer);
+        std::copy(p_start_, p_start_ + sizeof(T) * _dataLen, _ctx.buffer());
+        _ctx += sizeof(T) * _dataLen;
+        result = true;
       }
       return result;
     }
@@ -290,13 +288,17 @@ namespace Buffers {
       return sizeof(T);
     }
 
+    static size_t getTypeSize(const T &_) {
+      return sizeof(T);
+    }
+
     template< size_t dataLen >
-    static size_t getTypeSize(const T _buffer[dataLen]) {
+    static size_t getTypeSize(const T (&_buffer)[dataLen]) {
       return sizeof(_buffer);
     }
 
     static size_t getTypeSize(const T * _buffer, const size_t dataLen) {
-      return sizeof(size_t) + sizeof(T) * dataLen;
+      return (sizeof(size_t) + sizeof(T) * dataLen);
     }
   };
 
@@ -315,7 +317,7 @@ namespace Buffers {
     static bool put(TBufferContext & _ctx, const char *str) {
       bool result = false;
       if (str) {
-        int kCStringLen = std::strlen(str) + 1;
+        int kCStringLen = getTypeSize(str);
         if (kCStringLen <= _ctx.buffer_size()) {
           const uint8_t *p_start_ = reinterpret_cast<const uint8_t *>(str);
           std::copy(p_start_, p_start_ + kCStringLen, _ctx.buffer());
@@ -327,7 +329,7 @@ namespace Buffers {
     }
 
     static size_t getTypeSize(const char *str) {
-      return std::strlen(str) + 1;;
+      return (std::strlen(str) + 1);
     }
   };
 
@@ -347,15 +349,15 @@ namespace Buffers {
    public:
     /**
      * Method for packing in buffer constant or temporary standard string
-     * @param str String for packing
+     * @param _str String for packing
      * @return Return true if packing is succeed, false otherwise
      */
     template <typename TBufferContext>
-    static bool put(TBufferContext & _ctx, const std::string &str) {
+    static bool put(TBufferContext & _ctx, const std::string & _str) {
       bool result = false;
-      int kCStringLen = str.size() + 1;
+      const int kCStringLen = getTypeSize(_str);
       if (kCStringLen <= _ctx.buffer_size()) {
-        const uint8_t *p_start_ = reinterpret_cast<const uint8_t *>(str.c_str());
+        const uint8_t *p_start_ = reinterpret_cast<const uint8_t *>(_str.c_str());
         std::copy(p_start_, p_start_ + kCStringLen, _ctx.buffer());
         _ctx += kCStringLen;
         result = true;
@@ -363,8 +365,8 @@ namespace Buffers {
       return result;
     }
 
-    static size_t getTypeSize(const std::string & str) {
-      return str.size();
+    static size_t getTypeSize(const std::string & _str) {
+      return (_str.size() + 1);
     }
   };
 
@@ -382,21 +384,25 @@ namespace Buffers {
      * @return Return true if packing is succeed, false otherwise
      */
     template <typename TBufferContext>
-    static bool put(TBufferContext & _ctx, const std::vector<T> & vec) {
+    static bool put(TBufferContext & _ctx, const std::vector<T> & _vec) {
       bool result = false;
-      if (vec.size() > 0) {
-        if (DelegatePackBuffer<decltype(vec.size())>{}.put(_ctx, vec.size()) &&
-            vec.size() <= _ctx.buffer_size()) {
-          std::copy(vec.data(), vec.data() + vec.size(), (T*)(_ctx.buffer()));
-          _ctx += vec.size() * sizeof(T);
+      if (_vec.size() > 0) {
+        if (getTypeSize(_vec) <= _ctx.buffer_size()) {
+          DelegatePackBuffer<decltype(_vec.size())>{}.put(_ctx, _vec.size());
+          std::copy(_vec.data(), _vec.data() + _vec.size(), (T*)(_ctx.buffer()));
+          _ctx += _vec.size() * sizeof(T);
           result = true;
         }
       }
       return result;
     }
 
-    static size_t getTypeSize(const std::string & str) {
-      return str.size();
+    static size_t getTypeSize(const std::vector<T> & _vec) {
+      size_t typeSize = sizeof(_vec.size());
+      for (auto& ve : _vec) {
+        typeSize += DelegatePackBuffer<T>{}.getTypeSize(ve);
+      }
+      return typeSize;
     }
   };
 
@@ -410,16 +416,16 @@ namespace Buffers {
     /**
      * Method for packing std::list in buffer
      * @tparam T Type of std::list
-     * @param lst std::list for packing
+     * @param _lst std::list for packing
      * @return Return true if packing is succeed, false otherwise
      */
     template <typename TBufferContext>
-    static bool put(TBufferContext & _ctx, const std::list<T> & lst) {
+    static bool put(TBufferContext & _ctx, const std::list<T> & _lst) {
       bool result = false;
-      if (lst.size() > 0) {
-        if (DelegatePackBuffer<decltype(lst.size())>{}.put(_ctx, lst.size()) &&
-            lst.size() <= _ctx.buffer_size()) {
-          for (auto ve : lst) {
+      if (_lst.size() > 0) {
+        if (getTypeSize(_lst) <= _ctx.buffer_size()) {
+          DelegatePackBuffer<decltype(_lst.size())>{}.put(_ctx, _lst.size());
+          for (auto ve : _lst) {
             DelegatePackBuffer<T>{}.put(_ctx, ve);
           }
           result = true;
@@ -428,8 +434,12 @@ namespace Buffers {
       return result;
     }
 
-    static size_t getTypeSize(const std::list<T> & lst) {
-      return lst.size();
+    static size_t getTypeSize(const std::list<T> & _lst) {
+      size_t typeSize = sizeof(_lst.size());
+      for (auto& ve : _lst) {
+        typeSize += DelegatePackBuffer<T>{}.getTypeSize(ve);
+      }
+      return typeSize;
     }
   };
 
@@ -450,8 +460,8 @@ namespace Buffers {
     static bool put(TBufferContext & _ctx, const std::set<K> & _set) {
       bool result = false;
       if (_set.size() > 0) {
-        if (DelegatePackBuffer<decltype(_set.size())>{}.put(_ctx, _set.size()) &&
-            _set.size() <= _ctx.buffer_size()) {
+        if (getTypeSize(_set) <= _ctx.buffer_size()) {
+          DelegatePackBuffer<decltype(_set.size())>{}.put(_ctx, _set.size());
           for (auto& ve : _set) {
             DelegatePackBuffer<K>{}.put(_ctx, ve);
           }
@@ -462,7 +472,11 @@ namespace Buffers {
     }
 
     static size_t getTypeSize(const std::set<K> & _set) {
-      return _set.size();
+      size_t typeSize = sizeof(_set.size());
+      for (auto& ve : _set) {
+        typeSize += DelegatePackBuffer<K>{}.getTypeSize(ve);
+      }
+      return typeSize;
     }
   };
 
@@ -482,14 +496,18 @@ namespace Buffers {
      * @return Return true if packing is succeed, false otherwise
      */
     template <typename TBufferContext>
-    static bool put(TBufferContext & _ctx, const std::pair<K, V> & pr) {
-      DelegatePackBuffer<K>{}.put(_ctx, pr.first);
-      DelegatePackBuffer<V>{}.put(_ctx, pr.second);
-      return true;
+    static bool put(TBufferContext & _ctx, const std::pair<K, V> & _pr) {
+      bool result = false;
+      if (getTypeSize(_pr) <= _ctx.buffer_size()) {
+        DelegatePackBuffer<K>{}.put(_ctx, _pr.first);
+        DelegatePackBuffer<V>{}.put(_ctx, _pr.second);
+        result = true;
+      }
+      return result;
     }
 
-    static size_t getTypeSize(const std::pair<K, V> & pr) {
-      return pr.size();
+    static size_t getTypeSize(const std::pair<K, V> & _pr) {
+      return (DelegatePackBuffer<K>{}.getTypeSize(_pr.first) + DelegatePackBuffer<V>{}.getTypeSize(_pr.second));
     }
   };
 
@@ -505,16 +523,16 @@ namespace Buffers {
      * Method for packing std::map in buffer
      * @tparam K Key of std::map
      * @tparam V Value of std::map
-     * @param mp std::map for packing
+     * @param _mp std::map for packing
      * @return Return true if packing is succeed, false otherwise
      */
     template <typename TBufferContext>
-    static bool put(TBufferContext & _ctx, const std::map<K, V> & mp) {
+    static bool put(TBufferContext & _ctx, const std::map<K, V> & _mp) {
       bool result = false;
-      if (mp.size() > 0) {
-        if (DelegatePackBuffer<decltype(mp.size())>{}.put(_ctx, mp.size()) &&
-            mp.size() <= _ctx.buffer_size()) {
-          for (auto& ve : mp) {
+      if (_mp.size() > 0) {
+        if (getTypeSize(_mp) <= _ctx.buffer_size()) {
+          DelegatePackBuffer<decltype(_mp.size())>{}.put(_ctx, _mp.size());
+          for (auto& ve : _mp) {
             DelegatePackBuffer<K>{}.put(_ctx, ve.first);
             DelegatePackBuffer<V>{}.put(_ctx, ve.second);
           }
@@ -524,8 +542,13 @@ namespace Buffers {
       return result;
     }
 
-    static size_t getTypeSize(const std::map<K, V> & mp) {
-      return mp.size();
+    static size_t getTypeSize(const std::map<K, V> & _mp) {
+      size_t typeSize = sizeof(_mp.size());
+      for (auto& ve : _mp) {
+        typeSize += DelegatePackBuffer<K>{}.getTypeSize(ve.first);
+        typeSize += DelegatePackBuffer<V>{}.getTypeSize(ve.second);
+      }
+      return typeSize;
     }
   };
 
@@ -546,8 +569,8 @@ namespace Buffers {
     static bool put(TBufferContext & _ctx, const std::unordered_set<K> & _set) {
       bool result = false;
       if (_set.size() > 0) {
-        if (DelegatePackBuffer<decltype(_set.size())>{}.put(_ctx, _set.size()) &&
-            _set.size() <= _ctx.buffer_size()) {
+        if (getTypeSize(_set) <= _ctx.buffer_size()) {
+          DelegatePackBuffer<decltype(_set.size())>{}.put(_ctx, _set.size());
           for (auto& ve : _set) {
             DelegatePackBuffer<K>{}.put(_ctx, ve);
           }
@@ -558,7 +581,11 @@ namespace Buffers {
     }
 
     static size_t getTypeSize(const std::unordered_set<K> & _set) {
-      return _set.size();
+      size_t typeSize = sizeof(_set.size());
+      for (auto& ve : _set) {
+        typeSize += DelegatePackBuffer<K>{}.getTypeSize(ve);
+      }
+      return typeSize;
     }
   };
 
@@ -578,12 +605,12 @@ namespace Buffers {
      * @return Return true if packing is succeed, false otherwise
      */
     template <typename TBufferContext>
-    static bool put(TBufferContext & _ctx, const std::unordered_map<K, V> & mp) {
+    static bool put(TBufferContext & _ctx, const std::unordered_map<K, V> & _mp) {
       bool result = false;
-      if (mp.size() > 0) {
-        if (DelegatePackBuffer<decltype(mp.size())>{}.put(_ctx, mp.size()) &&
-            mp.size() <= _ctx.buffer_size()) {
-          for (auto& ve : mp) {
+      if (_mp.size() > 0) {
+        if (getTypeSize(_mp) <= _ctx.buffer_size()) {
+          DelegatePackBuffer<decltype(_mp.size())>{}.put(_ctx, _mp.size());
+          for (auto& ve : _mp) {
             DelegatePackBuffer<K>{}.put(_ctx, ve.first);
             DelegatePackBuffer<V>{}.put(_ctx, ve.second);
           }
@@ -593,8 +620,13 @@ namespace Buffers {
       return result;
     }
 
-    static size_t getTypeSize(const std::unordered_map<K, V> & mp) {
-      return mp.size();
+    static size_t getTypeSize(const std::unordered_map<K, V> & _mp) {
+      size_t typeSize = sizeof(_mp.size());
+      for (auto& ve : _mp) {
+        typeSize += DelegatePackBuffer<K>{}.getTypeSize(ve.first);
+        typeSize += DelegatePackBuffer<V>{}.getTypeSize(ve.second);
+      }
+      return typeSize;
     }
   };
 
