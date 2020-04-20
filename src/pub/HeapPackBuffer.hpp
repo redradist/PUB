@@ -3,7 +3,7 @@
  * @author Denis Kotov
  * @date 19 Apr 2017
  * @brief Contains library for creating Heap based Pack Buffer
- * @copyright MIT License. Open source: https://github.com/redradist/Buffers.git
+ * @copyright MIT License. Open source: https://github.com/redradist/PUB.git
  */
 
 #ifndef BUFFERS_HEAPPACKBUFFER_HPP
@@ -12,7 +12,7 @@
 #include <stdint.h>
 #include "PackBuffer.hpp"
 
-namespace Buffers {
+namespace buffers {
 /**
  * Pack buffer class based on heap buffer
  * @tparam _Size Size of heap buffer

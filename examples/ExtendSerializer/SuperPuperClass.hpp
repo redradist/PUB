@@ -5,8 +5,8 @@
 #ifndef EXTENDEDSERIALIZER_SUPERPUPERCLASS_HPP
 #define EXTENDEDSERIALIZER_SUPERPUPERCLASS_HPP
 
-#include <PackBuffer.hpp>
-#include <UnpackBuffer.hpp>
+#include <pub/PackBuffer.hpp>
+#include <pub/UnpackBuffer.hpp>
 
 class SuperPuperClass {
  public:
@@ -14,11 +14,11 @@ class SuperPuperClass {
 
   int a = 0;
   double k = 0;
-  friend class Buffers::PackBuffer::DelegatePackBuffer<SuperPuperClass>;
-  friend class Buffers::UnpackBuffer::DelegateUnpackBuffer<SuperPuperClass>;
+  friend class buffers::PackBuffer::DelegatePackBuffer<SuperPuperClass>;
+  friend class buffers::UnpackBuffer::DelegateUnpackBuffer<SuperPuperClass>;
 };
 
-namespace Buffers {
+namespace buffers {
 /**
  * Specialization DelegatePackBuffer class for SuperPuperClass
  */

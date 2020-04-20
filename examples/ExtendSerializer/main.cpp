@@ -3,12 +3,12 @@
 //
 
 #include <iostream>
+#include <pub/HeapPackBuffer.hpp>
 #include "SuperPuperClass.hpp"
-#include <HeapPackBuffer.hpp>
 
 int main() {
-  using Buffers::HeapPackBuffer;
-  using Buffers::UnpackBuffer;
+  using buffers::HeapPackBuffer;
+  using buffers::UnpackBuffer;
 
   HeapPackBuffer buffer(200);
   {
