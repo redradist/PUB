@@ -5,7 +5,7 @@
 #include <gtest/gtest.h>
 #include "pub/UnpackBuffer.hpp"
 
-using Buffers::UnpackBuffer;
+using buffers::UnpackBuffer;
 
 struct UnpackBufferStringTest : testing::Test
 {
@@ -27,10 +27,10 @@ TEST_F(UnpackBufferStringTest, ValidTest)
             array);
   const std::string testCase1 = "arra1";
   std::copy(testCase1.c_str(), testCase1.c_str() + testCase1.size() + 1,
-            array + testCase0.size() + 1);
+            array + testCase0.size() + 1 + 1 /*alignment size*/);
   const std::string testCase2 = "arr2";
   std::copy(testCase2.c_str(), testCase2.c_str() + testCase2.size() + 1,
-            array + testCase0.size() + 1 + testCase1.size() + 1);
+            array + testCase0.size() + 1 + 1 /*alignment size*/ + testCase1.size() + 1 + 2 /*alignment size*/);
   ASSERT_EQ(std::string(unpackBuffer->get()),
             std::string("array0"));
   ASSERT_EQ(std::string(unpackBuffer->get()),
@@ -54,9 +54,21 @@ struct UnpackBufferByteTest : testing::Test
 
 TEST_F(UnpackBufferByteTest, ValidTest)
 {
+  //
   array[0] = 5;
-  array[1] = 3;
-  array[2] = 6;
+  array[1] = 0;
+  array[2] = 0;
+  array[3] = 0;
+  //
+  array[4] = 3;
+  array[5] = 0;
+  array[6] = 0;
+  array[7] = 0;
+  //
+  array[8] = 6;
+  array[9] = 0;
+  array[10] = 0;
+  array[11] = 0;
   ASSERT_EQ(unpackBuffer->get<uint8_t>(), 5);
   ASSERT_EQ(unpackBuffer->get<uint8_t>(), 3);
   ASSERT_EQ(unpackBuffer->get<uint8_t>(), 6);
@@ -77,9 +89,15 @@ struct UnpackBufferWordTest : testing::Test
 
 TEST_F(UnpackBufferWordTest, ValidTest)
 {
+  //
   array[0] = 5;
-  array[1] = 3;
-  array[2] = 6;
+  array[1] = 0;
+  //
+  array[2] = 3;
+  array[3] = 0;
+  //
+  array[4] = 6;
+  array[5] = 0;
   ASSERT_EQ(unpackBuffer->get<uint16_t>(), 5);
   ASSERT_EQ(unpackBuffer->get<uint16_t>(), 3);
   ASSERT_EQ(unpackBuffer->get<uint16_t>(), 6);

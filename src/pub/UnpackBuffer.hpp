@@ -3,7 +3,7 @@
  * @author Denis Kotov
  * @date 17 Apr 2017
  * @brief Contains abstract class for Unpack Buffer
- * @copyright MIT License. Open source: https://github.com/redradist/Buffers.git
+ * @copyright MIT License. Open source: https://github.com/redradist/PUB.git
  */
 
 #ifndef BUFFERS_UNPACKBUFFER_HPP
@@ -19,7 +19,9 @@
 #include <unordered_set>
 #include <unordered_map>
 
-namespace Buffers {
+#include "AlignMemory.hpp"
+
+namespace buffers {
   /**
    * Unpack buffer class
    */
@@ -39,26 +41,28 @@ namespace Buffers {
       Context& operator=(Context&&) = delete;
 
       Context & operator +=(const size_t & _size) {
-      #ifdef __EXCEPTIONS
+      #ifdef __cpp_exceptions
         if (buf_size_ < (msg_size_ + _size)) {
           throw std::out_of_range("Acquire more memory than is available !!");
         }
       #endif
 
-        p_msg_ += _size;
-        msg_size_ += _size;
+        const uint32_t kAlignedSize = getAlignedSize(_size);
+        p_msg_ += kAlignedSize;
+        msg_size_ += kAlignedSize;
         return *this;
       }
 
       Context & operator -=(const size_t & _size) {
-      #ifdef __EXCEPTIONS
+      #ifdef __cpp_exceptions
         if (msg_size_ < _size) {
           throw std::out_of_range("Release more memory than was originally !!");
         }
       #endif
 
-        p_msg_ -= _size;
-        msg_size_ -= _size;
+        const uint32_t kAlignedSize = getAlignedSize(_size);
+        p_msg_ -= kAlignedSize;
+        msg_size_ -= kAlignedSize;
         return *this;
       }
 
@@ -71,15 +75,23 @@ namespace Buffers {
       }
 
      private:
-      Context(uint8_t const * _pMsg, size_t _size)
+      Context(uint8_t const * _pMsg, size_t _size, AlignMemory _alignment)
           : buf_size_{_size}
           , p_msg_{_pMsg}
-          , msg_size_{0} {
+          , msg_size_{0}
+          , alignment_{_alignment} {
+      }
+
+      uint32_t getAlignedSize(const size_t & _size) const {
+        const auto kAlignedMemChunk = static_cast<uint32_t>(alignment_);
+        const uint32_t kNumChunks = _size / kAlignedMemChunk + (_size % kAlignedMemChunk == 0 ? 0 : 1);
+        return kNumChunks * kAlignedMemChunk;
       }
 
       const size_t buf_size_;
       uint8_t const * p_msg_;
       size_t msg_size_;
+      AlignMemory alignment_;
     };
 
     /**
@@ -103,9 +115,9 @@ namespace Buffers {
      * @param _pMsg Pointer to the raw buffer
      * @param _size Size of raw buffer
      */
-    UnpackBuffer(uint8_t const * const _pMsg, const size_t _size)
+    UnpackBuffer(uint8_t const * const _pMsg, const size_t _size, AlignMemory _alignment = static_cast<AlignMemory>(sizeof(int)))
         : p_buf_(_pMsg)
-        , context_(_pMsg, _size) {
+        , context_(_pMsg, _size, _alignment) {
     }
 
     /**
@@ -114,8 +126,8 @@ namespace Buffers {
      * Better to use main constructor
      * @param _pMsg Pointer to the raw buffer
      */
-    UnpackBuffer(uint8_t const * const _pMsg)
-        : UnpackBuffer(_pMsg, std::numeric_limits<size_t>::max()) {
+    UnpackBuffer(uint8_t const * const _pMsg, AlignMemory _alignment = static_cast<AlignMemory>(sizeof(int)))
+        : UnpackBuffer(_pMsg, std::numeric_limits<size_t>::max(), _alignment) {
     }
 
     /**
@@ -123,9 +135,9 @@ namespace Buffers {
      * @param pMsg Pointer to the raw buffer
      */
     template <typename T, size_t dataLen>
-    UnpackBuffer(const T (&_buffer)[dataLen])
+    UnpackBuffer(const T (&_buffer)[dataLen], AlignMemory _alignment = static_cast<AlignMemory>(sizeof(int)))
         : p_buf_(reinterpret_cast<uint8_t const *>(_buffer))
-        , context_(p_buf_, sizeof(T) * dataLen) {
+        , context_(p_buf_, sizeof(T) * dataLen, _alignment) {
     }
 
     /**
