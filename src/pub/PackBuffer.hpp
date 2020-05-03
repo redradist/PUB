@@ -277,7 +277,6 @@ namespace buffers {
       return result;
     }
 
-
     /**
      * Method for packing in buffer array of data
      * @tparam T Type of packing data
