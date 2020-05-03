@@ -7,13 +7,6 @@ class PubTestConan(ConanFile):
     settings = "os", "compiler", "build_type", "arch"
     generators = "cmake"
 
-    def source(self):
-        tools.replace_in_file("/home/redra/Projects/PUB/test_package/CMakeLists.txt",
-                              "project(PackageTest CXX)",
-                              '''project(PackageTest CXX)
-include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
-conan_basic_setup()''')
-
     def build(self):
         cmake = CMake(self)
         # Current dir is "test_package/build/<build_id>" and CMakeLists.txt is
@@ -28,4 +21,5 @@ conan_basic_setup()''')
 
     def test(self):
         if not tools.cross_building(self.settings):
+            os.chdir("bin")
             self.run(".%sexample" % os.sep)

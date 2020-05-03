@@ -17,16 +17,6 @@ class PubConan(ConanFile):
 
     def source(self):
         self.run("git clone git@github.com:redradist/PUB.git")
-        # This small hack might be useful to guarantee proper /MT /MD linkage
-        # in MSVC if the packaged project doesn't have variables to set it
-        # properly
-        tools.replace_in_file("/home/redra/Projects/PUB/CMakeLists.txt",
-                              "project(pub CXX)",
-                              '''
-project(pub CXX)
-include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
-conan_basic_setup()
-''')
 
     def build(self):
         cmake = CMake(self)
